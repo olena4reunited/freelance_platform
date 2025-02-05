@@ -1,4 +1,4 @@
-from server.app.database.database import database
+from server.app.database.database import PostgresDatabase
 
 
 def create_initial_migration():
@@ -31,21 +31,21 @@ def create_initial_migration():
             first_name VARCHAR(64) NOT NULL,
             last_name VARCHAR(64) NOT NULL,
             email VARCHAR(128) UNIQUE NOT NULL,
-            phone_number VARCHAR(12) UNIQUE,
+            phone_number VARCHAR(13) UNIQUE,
             password VARCHAR(256) NOT NULL,
             photo_link TEXT,
             description TEXT,
             is_verified BOOLEAN DEFAULT FALSE NOT NULL,
-            block_expired TIMESTAMP NULL,
+            block_expired TIMESTAMP DEFAULT NULL,
             delete_date DATE NULL,
-            balance REAL,
-            rating SMALLINT CHECK (rating > 0 AND rating <= 5),
+            balance DECIMAL(10, 2),
+            rating SMALLINT CHECK (rating BETWEEN 0 AND 5),
             plan_id INTEGER NOT NULL,
-            FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
+            FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE
         );
         """
     ]
 
-    with database as db:
+    with PostgresDatabase() as db:
         for query in queries:
             db.execute_query(query)

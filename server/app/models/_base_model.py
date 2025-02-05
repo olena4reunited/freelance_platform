@@ -1,7 +1,6 @@
-import uuid
 from typing import Any
 
-from server.app.database.database import database
+from server.app.database.database import PostgresDatabase
 
 
 class BaseModel:
@@ -9,15 +8,15 @@ class BaseModel:
 
     @classmethod
     def get_record_by_id(cls, record_id: int) -> dict[str, Any] | None:
-        with database as db:
+        with PostgresDatabase() as db:
             return db.fetch_one(
-                f"SELECT * FROM {cls.table_name} WHERE id = $s",
+                f"SELECT * FROM {cls.table_name} WHERE id = %s",
                 (record_id,),
             )
 
     @classmethod
     def get_all_records(cls) -> list[dict[str, Any]] | None:
-        with database as db:
+        with PostgresDatabase() as db:
             return db.fetch_all(
                 f"SELECT * FROM {cls.table_name}",
             )
@@ -25,8 +24,9 @@ class BaseModel:
     @classmethod
     def create_record(cls, **kwargs) -> dict[str, Any] | None:
         columns = ", ".join(kwargs.keys())
-        values_placeholder = ", ".join(["$s"] * len(kwargs))
-        with database as db:
+        values_placeholder = ", ".join(["%s"] * len(kwargs))
+
+        with PostgresDatabase() as db:
             return db.fetch_one(
                 f"""
                 INSERT INTO {cls.table_name} ({columns}) VALUES ({values_placeholder})
@@ -35,19 +35,21 @@ class BaseModel:
             )
 
     @classmethod
-    def update_record(cls, record_id: int, **kwargs) -> int | None:
-        set_clause = ", ".join(f"{key} = $s" for key in kwargs.keys())
-        values = tuple(kwargs.values()) + (record_id,)
-        with database as db:
-            return db.execute_query(
-                f"UPDATE {cls.table_name} SET {set_clause} WHERE id = $s",
-                tuple(kwargs.values()) + (record_id,),
+    def update_record(cls, record_id: int, **kwargs) -> dict[str, Any] | None:
+        set_clause = ", ".join(f"{key} = %s" for key in kwargs.keys())
+
+        with PostgresDatabase() as db:
+            return db.fetch_one(
+                f"UPDATE {cls.table_name} SET {set_clause} WHERE id = %s",
+                (*kwargs.values(), record_id,),
             )
 
     @classmethod
     def delete_record_by_id(cls, record_id: int) -> int | None:
-        with database as db:
+        with PostgresDatabase() as db:
             return db.execute_query(
-                f"DELETE FROM {cls.table_name} WHERE id = $s",
+                f"DELETE FROM {cls.table_name} WHERE id = %s",
                 (record_id,),
             )
+
+

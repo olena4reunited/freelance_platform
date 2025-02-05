@@ -12,26 +12,15 @@ def load_config() -> dict:
 
 
 class PostgresDatabase:
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self):
-        if not hasattr(self, "initialized"):
-            self.config = load_config()
-            self.connection = None
-            self.initialized = True
+        self.config = load_config()
 
     def __enter__(self):
-        if not self.connection:
-            try:
-                self.connection = psycopg2.connect(**self.config)
-            except Exception as e:
-                print(f"Database connection error: {e}")
-                raise
+        try:
+            self.connection = psycopg2.connect(**self.config)
+        except Exception as e:
+             print(f"Database connection error: {e}")
+             raise
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -40,9 +29,7 @@ class PostgresDatabase:
         else:
             self.connection.commit()
 
-        if self.connection:
-            self.connection.close()
-            self.connection = None
+        self.connection.close()
 
     def execute_query(self, query: str, params: tuple | None = None) -> int:
         with self.connection.cursor() as cursor:
@@ -58,6 +45,3 @@ class PostgresDatabase:
         with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(query, params)
             return cursor.fetchall()
-
-
-database = PostgresDatabase()
