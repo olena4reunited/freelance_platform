@@ -2,6 +2,7 @@ import json
 import os
 
 import psycopg2
+from psycopg2.extras import RealDictCursor
 
 
 def load_config() -> dict:
@@ -49,12 +50,12 @@ class PostgresDatabase:
             return cursor.rowcount
 
     def fetch_one(self, query: str, params: tuple | None = None) -> dict:
-        with self.connection.cursor() as cursor:
+        with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(query, params)
             return cursor.fetchone()
 
     def fetch_all(self, query: str, params: tuple | None = None) -> list[dict]:
-        with self.connection.cursor() as cursor:
+        with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(query, params)
             return cursor.fetchall()
 
