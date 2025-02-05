@@ -14,13 +14,7 @@ config = load_config()
 
 def connect_db():
     try:
-        conn = psycopg2.connect(
-            dbname=config["DB_NAME"],
-            user=config["DB_USER"],
-            password=config["DB_PASSWORD"],
-            host=config["DB_HOST"],
-            port=config["DB_PORT"],
-        )
+        conn = psycopg2.connect(**config)
         return conn
     except Exception as e:
         print(e)
