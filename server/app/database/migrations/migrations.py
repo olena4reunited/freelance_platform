@@ -1,11 +1,7 @@
-from server.app.database.database import connect_db
+from server.app.database.database import database
 
 
 def create_initial_migration():
-    conn = connect_db()
-    if not conn:
-        return
-
     queries = [
         """
         CREATE TABLE IF NOT EXISTS plans (
@@ -50,10 +46,6 @@ def create_initial_migration():
         """
     ]
 
-    with conn.cursor() as cursor:
+    with database as db:
         for query in queries:
-            cursor.execute(query)
-
-        conn.commit()
-
-    conn.close()
+            db.execute_query(query)
