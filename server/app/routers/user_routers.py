@@ -10,7 +10,7 @@ from server.app.controllers.user_controller import UserController
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserResponse)
+@router.post("/signup", response_model=UserResponse)
 def create_user(user_data: UserBase):
     try:
         return UserController.create_user(**user_data.model_dump())
@@ -26,7 +26,7 @@ def get_user(user_id: int):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.put("/{user_id}", response_model=UserResponse)
+@router.patch("/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, updated_user_data: dict):
     try:
         return UserController.update_user(user_id, **updated_user_data)
