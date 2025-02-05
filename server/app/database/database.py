@@ -1,26 +1,25 @@
+import json
 import os
 
 import psycopg2
-from dotenv import load_dotenv
+
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    with open(config_path) as config_file:
+        return json.load(config_file)
 
 
-load_dotenv()
-
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
+config = load_config()
 
 
 def connect_db():
     try:
         conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT,
+            dbname=config["DB_NAME"],
+            user=config["DB_USER"],
+            password=config["DB_PASSWORD"],
+            host=config["DB_HOST"],
+            port=config["DB_PORT"],
         )
         return conn
     except Exception as e:
