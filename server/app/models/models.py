@@ -15,3 +15,7 @@ class PlanPermission(BaseModel):
 
 class User(BaseModel):
     table_name = "users"
+
+
+class Payment(BaseModel):
+    table_name = "payments"

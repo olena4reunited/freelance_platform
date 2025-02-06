@@ -1,6 +1,7 @@
-from unittest import case
+from typing import Union
 
 from fastapi import APIRouter, HTTPException
+from starlette.responses import RedirectResponse
 
 from server.app.schemas.users_schemas import (
     UserCreate,
@@ -13,7 +14,7 @@ from server.app.validators.user_validators import UserValidator, MethodEnum
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/signup", response_model=UserResponse)
+@router.post("/signup", response_model=Union[UserResponse, RedirectResponse])
 def create_user(user_data: UserCreate):
     try:
         UserValidator(
@@ -28,7 +29,8 @@ def create_user(user_data: UserCreate):
 
         match user_data.plan_id:
             case 3:
-                return UserController.create_user_customer(**user_data.model_dump())
+                UserController.create_user_customer(**user_data.model_dump())
+                return RedirectResponse(url="/payments/add_payment", status_code=302)
             case 4:
                 return UserController.create_user_performer(**user_data.model_dump())
             case _:
