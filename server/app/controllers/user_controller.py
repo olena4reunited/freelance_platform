@@ -1,7 +1,9 @@
+import re
 from typing import Any
 
 from server.app.models.models import User
 from server.app.utils.auth import get_password_hash
+from server.app.utils.auth import verify_password
 
 
 class UserController:
@@ -46,8 +48,18 @@ class UserController:
 
 
     @staticmethod
-    def authenticate_user():
-        ...
+    def authenticate_user(login_field: str, password: str):
+        if not re.match(r"\w+@[a-zA-Z_]+\.[a-zA-Z]{2,6}", login_field):
+            user = User.get_user_by_field(field="email", value=login_field)
+        else:
+            user = User.get_user_by_field(field="username", value=login_field)
+
+        if not user:
+            return False
+        if not verify_password(password, user["password"]):
+            return False
+
+        return user
 
     @staticmethod
     def verify_user():
