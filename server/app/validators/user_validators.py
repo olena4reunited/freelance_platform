@@ -15,11 +15,13 @@ class UserValidator:
             method: MethodEnum,
             email: str | None = None,
             password: str | None = None,
+            password_repeat: str | None = None,
             phone_number: str | None = None
     ):
         self.method = method.value
         self.email = email
         self.password = password
+        self.password_repeat = password_repeat
         self.phone_number = phone_number
 
 
@@ -42,6 +44,8 @@ class UserValidator:
             raise HTTPException(status_code=400, detail="Password is required")
         if not self.password and not self.method:
             return self
+        if not (self.password == self.password_repeat):
+            raise HTTPException(status_code=400, detail="Passwords don't match")
 
         if len(self.password) < 8:
             raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")

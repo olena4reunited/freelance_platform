@@ -7,32 +7,34 @@ class UserCreate(BaseModel):
     first_name: str
     last_name: str
     username: str
-    email: EmailStr
+    email: str
     phone_number: str
     password: str
     password_repeat: str
     plan_id: PlanEnum
 
 
+class UserUpdate(BaseModel):
+    first_name: str | None
+    last_name: str | None
+    username: str | None
+    email: str | None
+    phone_number: str | None
+    password: str | None
+    password_repeat: str | None
+    photo_link: str | None
+    description: str | None
 
-class UserBase(BaseModel):
+
+class UserResponse(BaseModel):
+    id: int
     first_name: str
     last_name: str
     username: str
     email: str
-    phone_number: constr(min_length=10, max_length=13) | None = None
-    password: str
-    photo_link: str | None = None
-    description: str | None = None
-    is_verified: bool = False
-    balance: condecimal(max_digits=10, decimal_places=2) = None
-    rating: conint(ge=0, le=5) = None
-    plan_id: PlanBase
-
-    class Config:
-        from_attributes = True
-
-
-class UserResponse(UserBase):
-    id: int
-
+    phone_number: str
+    photo_link: str | None
+    description: str | None
+    balance: condecimal(max_digits=10, decimal_places=2) | None
+    rating:conint(ge=0, le=5) | None
+    plan_id: PlanEnum

@@ -6,8 +6,17 @@ from server.app.utils.auth import get_password_hash
 
 class UserController:
     @staticmethod
-    def create_user(user_data: dict) -> dict[str, Any]:
+    def create_user_customer(user_data: dict) -> dict[str, Any]:
         user_data["password"] = get_password_hash(user_data["password"])
+        user_data.pop("password_repeat")
+        new_user = User.create_record(**user_data)
+
+        return new_user
+
+    @staticmethod
+    def create_user_performer(user_data: dict) -> dict[str, Any]:
+        user_data["password"] = get_password_hash(user_data["password"])
+        user_data.pop("password_repeat")
         new_user = User.create_record(**user_data)
 
         return new_user

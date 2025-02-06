@@ -1,28 +1,42 @@
+from unittest import case
+
 from fastapi import APIRouter, HTTPException
 
 from server.app.schemas.users_schemas import (
-    UserResponse,
-    UserBase
+    UserCreate,
+    UserResponse
 )
 from server.app.controllers.user_controller import UserController
 from server.app.validators.user_validators import UserValidator, MethodEnum
+
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/signup", response_model=UserResponse)
-def create_user(user_data: UserBase):
+def create_user(user_data: UserCreate):
     try:
         UserValidator(
             MethodEnum.create,
             user_data.email,
             user_data.password,
+            user_data.password_repeat,
             user_data.phone_number) \
             .validate_email() \
             .validate_password() \
             .validate_phone_number()
 
-        return UserController.create_user(**user_data.model_dump())
+        match user_data.plan_id:
+            case 3:
+                return UserController.create_user_customer(**user_data.model_dump())
+            case 4:
+                return UserController.create_user_performer(**user_data.model_dump())
+            case _:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You are not allowed to choose this role"
+                )
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -42,6 +56,7 @@ def update_user(user_id: int, updated_user_data: dict):
             MethodEnum.update,
             updated_user_data.get("email", None),
             updated_user_data.get("password", None),
+            updated_user_data.get("password_repeat", None),
             updated_user_data.get("phone_number", None)) \
             .validate_email() \
             .validate_password() \
