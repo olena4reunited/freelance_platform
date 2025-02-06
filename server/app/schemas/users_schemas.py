@@ -6,7 +6,7 @@ from server.app.schemas.plans_schemas import PlanBase
 class UserBase(BaseModel):
     first_name: str
     last_name: str
-    email: EmailStr
+    email: str
     phone_number: constr(min_length=10, max_length=13)
     password: constr(min_length=8)
     photo_link: str | None = None
