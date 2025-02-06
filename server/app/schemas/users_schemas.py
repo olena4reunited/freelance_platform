@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, constr, condecimal, conint
 
-from server.app.schemas.plans_schemas import PlanBase
+from server.app.schemas.plans_schemas import PlanEnum
 
 
 class UserCreate(BaseModel):
@@ -11,6 +11,7 @@ class UserCreate(BaseModel):
     phone_number: str
     password: str
     password_repeat: str
+    plan_id: PlanEnum
 
 
 
