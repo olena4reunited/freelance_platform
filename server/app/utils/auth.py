@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from starlette import status
 
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -21,13 +22,13 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-with open("../../keys/private.pem", "rb") as key_file:
+with open(os.path.join(os.path.dirname(__file__), "../../keys/private.pem"), "rb") as key_file:
     private_key = serialization.load_pem_private_key(
         key_file.read(),
         password=None,
     )
 
-with open("../../keys/public.pem", "rb") as key_file:
+with open(os.path.join(os.path.dirname(__file__), "../../keys/public.pem"), "rb") as key_file:
     public_key = serialization.load_pem_public_key(key_file.read())
 
 
