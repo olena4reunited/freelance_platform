@@ -21,10 +21,12 @@ def create_user(user_data: Union[UserCreateCustomer, UserCreatePerformer]):
     try:
         UserValidator(
             MethodEnum.create,
+            user_data.username,
             user_data.email,
             user_data.password,
             user_data.password_repeat,
             user_data.phone_number) \
+            .validate_username() \
             .validate_email() \
             .validate_password() \
             .validate_phone_number()
@@ -56,10 +58,12 @@ def update_user(user_id: int, updated_user_data: dict):
     try:
         UserValidator(
             MethodEnum.update,
+            updated_user_data.get("username", None),
             updated_user_data.get("email", None),
             updated_user_data.get("password", None),
             updated_user_data.get("password_repeat", None),
             updated_user_data.get("phone_number", None)) \
+            .validate_username() \
             .validate_email() \
             .validate_password() \
             .validate_phone_number()

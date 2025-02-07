@@ -15,7 +15,7 @@ class UserValidator:
     def __init__(
             self,
             method: MethodEnum,
-            username: str,
+            username: str | None = None,
             email: str | None = None,
             password: str | None = None,
             password_repeat: str | None = None,
@@ -29,7 +29,7 @@ class UserValidator:
         self.phone_number = phone_number
 
     def validate_username(self):
-        if not self.username:
+        if not self.username and self.method:
             raise HTTPException(status_code=400, detail="Username is required")
         if User.get_user_by_field("username", self.username):
             raise HTTPException(status_code=400, detail="User with this username is already registered")
