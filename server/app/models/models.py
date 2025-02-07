@@ -22,7 +22,7 @@ class User(BaseModel):
     @staticmethod
     def get_user_by_field(field: str, value: str) -> dict[str, Any]:
         with PostgresDatabase() as db:
-            return db.fetch_one(
+            return db.fetch(
                 f"SELECT * FROM {User.table_name} WHERE {field} = %s",
                 (value,),
             )

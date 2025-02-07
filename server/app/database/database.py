@@ -11,13 +11,20 @@ def load_config() -> dict:
         return json.load(config_file)
 
 
+def get_db() -> psycopg2.extensions.connection:
+    return psycopg2.connect(**load_config())
+
+
 class PostgresDatabase:
-    def __init__(self):
+    def __init__(self, on_commit: bool = False):
         self.config = load_config()
+        self.connection = None
+        self.on_commit = on_commit
 
     def __enter__(self):
         try:
             self.connection = psycopg2.connect(**self.config)
+            self.connection.autocommit = False
         except Exception as e:
              print(f"Database connection error: {e}")
              raise
@@ -26,7 +33,7 @@ class PostgresDatabase:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             self.connection.rollback()
-        else:
+        if self.on_commit:
             self.connection.commit()
 
         self.connection.close()
@@ -34,14 +41,15 @@ class PostgresDatabase:
     def execute_query(self, query: str, params: tuple | None = None) -> int:
         with self.connection.cursor() as cursor:
             cursor.execute(query, params)
+
             return cursor.rowcount
 
-    def fetch_one(self, query: str, params: tuple | None = None) -> dict:
+    def fetch(self, query: str, params: tuple | None = None, is_all: bool = False) -> list[dict] | dict[str,None] | None:
         with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(query, params)
-            return cursor.fetchone()
 
-    def fetch_all(self, query: str, params: tuple | None = None) -> list[dict]:
-        with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute(query, params)
-            return cursor.fetchall()
+            return cursor.fetchall() if is_all else cursor.fetchone()
+
+
+
+

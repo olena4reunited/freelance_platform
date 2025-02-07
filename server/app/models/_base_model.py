@@ -9,7 +9,7 @@ class BaseModel:
     @classmethod
     def get_record_by_id(cls, record_id: int) -> dict[str, Any] | None:
         with PostgresDatabase() as db:
-            return db.fetch_one(
+            return db.fetch(
                 f"SELECT * FROM {cls.table_name} WHERE id = %s",
                 (record_id,),
             )
@@ -17,8 +17,9 @@ class BaseModel:
     @classmethod
     def get_all_records(cls) -> list[dict[str, Any]] | None:
         with PostgresDatabase() as db:
-            return db.fetch_all(
+            return db.fetch(
                 f"SELECT * FROM {cls.table_name}",
+                is_all=True,
             )
 
     @classmethod
@@ -27,7 +28,7 @@ class BaseModel:
         values_placeholder = ", ".join(["%s"] * len(kwargs))
 
         with PostgresDatabase() as db:
-            return db.fetch_one(
+            return db.fetch(
                 f"""
                 INSERT INTO {cls.table_name} ({columns}) VALUES ({values_placeholder})
                 """,
@@ -39,7 +40,7 @@ class BaseModel:
         set_clause = ", ".join(f"{key} = %s" for key in kwargs.keys())
 
         with PostgresDatabase() as db:
-            return db.fetch_one(
+            return db.fetch(
                 f"UPDATE {cls.table_name} SET {set_clause} WHERE id = %s",
                 (*kwargs.values(), record_id,),
             )
