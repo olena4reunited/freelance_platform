@@ -3,6 +3,8 @@ from enum import Enum
 
 from fastapi import HTTPException
 
+from server.app.models.models import User
+
 
 class MethodEnum(Enum):
     create = 1
@@ -13,23 +15,34 @@ class UserValidator:
     def __init__(
             self,
             method: MethodEnum,
+            username: str,
             email: str | None = None,
             password: str | None = None,
             password_repeat: str | None = None,
             phone_number: str | None = None
     ):
         self.method = method.value
+        self.username = username
         self.email = email
         self.password = password
         self.password_repeat = password_repeat
         self.phone_number = phone_number
 
+    def validate_username(self):
+        if not self.username:
+            raise HTTPException(status_code=400, detail="Username is required")
+        if User.get_user_by_field("username", self.username):
+            raise HTTPException(status_code=400, detail="User with this username is already registered")
+
+        return self
 
     def validate_email(self):
         if not self.email and self.method:
             raise HTTPException(status_code=400, detail="Email is required")
         if not self.email and not self.method:
             return self
+        if User.get_user_by_field("email", self.email):
+            raise HTTPException(status_code=400, detail="Email is already registered")
 
         email_regex = r"\w+@[a-zA-Z_]+\.[a-zA-Z]{2,6}"
 
@@ -64,6 +77,9 @@ class UserValidator:
     def validate_phone_number(self):
         if not self.phone_number:
             return self
+        if self.phone_number and User.get_user_by_field("phone_number", self.phone_number):
+            raise HTTPException(status_code=400, detail="Phone number is already registered")
+
 
         phone_number_regex = r"^\+?\d{10, 12}$"
 

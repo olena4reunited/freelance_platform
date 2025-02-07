@@ -1,7 +1,5 @@
 from enum import Enum
 
-from pydantic import BaseModel
-
 
 class PlanEnum(Enum):
     admin = 1

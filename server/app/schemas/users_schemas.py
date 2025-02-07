@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr, constr, condecimal, conint
+from typing import Literal
+
+from pydantic import BaseModel, condecimal, conint
 
 from server.app.schemas.plans_schemas import PlanEnum
 
@@ -11,7 +13,15 @@ class UserCreate(BaseModel):
     phone_number: str
     password: str
     password_repeat: str
-    plan_id: PlanEnum
+
+
+class UserCreateCustomer(UserCreate):
+    plan_id: Literal[3] = PlanEnum.customer.value
+    payment: str
+
+
+class UserCreatePerformer(UserCreate):
+    plan_id: Literal[4] = PlanEnum.performer.value
 
 
 class UserUpdate(BaseModel):
@@ -36,5 +46,5 @@ class UserResponse(BaseModel):
     photo_link: str | None
     description: str | None
     balance: condecimal(max_digits=10, decimal_places=2) | None
-    rating:conint(ge=0, le=5) | None
+    rating: conint(ge=0, le=5) | None
     plan_id: PlanEnum

@@ -1,11 +1,13 @@
 from typing import Union
 
 from fastapi import APIRouter, HTTPException
+from starlette import status
 from starlette.responses import RedirectResponse
 
 from server.app.schemas.users_schemas import (
-    UserCreate,
-    UserResponse
+    UserResponse,
+    UserCreateCustomer,
+    UserCreatePerformer
 )
 from server.app.controllers.user_controller import UserController
 from server.app.validators.user_validators import UserValidator, MethodEnum
@@ -14,8 +16,8 @@ from server.app.validators.user_validators import UserValidator, MethodEnum
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/signup", response_model=Union[UserResponse, RedirectResponse])
-def create_user(user_data: UserCreate):
+@router.post("/register", response_model=UserResponse)
+def create_user(user_data: Union[UserCreateCustomer, UserCreatePerformer]):
     try:
         UserValidator(
             MethodEnum.create,
@@ -27,17 +29,15 @@ def create_user(user_data: UserCreate):
             .validate_password() \
             .validate_phone_number()
 
-        match user_data.plan_id:
-            case 3:
-                UserController.create_user_customer(**user_data.model_dump())
-                return RedirectResponse(url="/payments/add_payment", status_code=302)
-            case 4:
-                return UserController.create_user_performer(**user_data.model_dump())
-            case _:
-                raise HTTPException(
-                    status_code=403,
-                    detail="You are not allowed to choose this role"
-                )
+        if user_data.plan_id == 3 and isinstance(user_data, UserCreateCustomer):
+            return UserController.create_user_customer(**user_data.model_dump())
+        elif user_data.plan_id == 4 and isinstance(user_data, UserCreatePerformer):
+            return UserController.create_user_performer(**user_data.model_dump())
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not allowed to choose this plan"
+            )
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

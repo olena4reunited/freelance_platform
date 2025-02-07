@@ -2,8 +2,9 @@ import re
 from typing import Any
 
 from server.app.models.models import User
-from server.app.utils.auth import get_password_hash
-from server.app.utils.auth import verify_password
+from server.app.utils.auth import get_password_hash, verify_password
+from server.app.utils.crypto import encrypt_data
+from server.app.database.database import PostgresDatabase
 
 
 class UserController:
@@ -11,9 +12,50 @@ class UserController:
     def create_user_customer(user_data: dict) -> dict[str, Any]:
         user_data["password"] = get_password_hash(user_data["password"])
         user_data.pop("password_repeat")
-        new_user = User.create_record(**user_data)
 
-        return new_user
+        user_data["payment"] = encrypt_data(bytes(user_data["payment"], encoding="utf-8"))
+
+        with PostgresDatabase() as db:
+            result = db.fetch_one(
+                """
+                WITH new_user AS (
+                    INSERT INTO users (first_name, last_name, username, email, phone_number, password, plan_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id, first_name, last_name, username, email, phone_number, password, photo_link, description, balance, rating, plan_id
+                )
+                INSERT INTO payments (user_id, payment)
+                VALUES ((SELECT id FROM new_user), %s)
+                RETURNING (
+                    SELECT json_build_object(
+                        'id', id,
+                        'first_name', first_name,
+                        'last_name', last_name,
+                        'username', username,
+                        'email', email,
+                        'phone_number', phone_number,
+                        'photo_link', photo_link,
+                        'description', description,
+                        'balance', balance,
+                        'rating', rating,
+                        'plan_id', plan_id
+                    ) 
+                    FROM new_user
+                ) AS user_data;
+                """,
+                (
+                    user_data["first_name"],
+                    user_data["last_name"],
+                    user_data["username"],
+                    user_data["email"],
+                    user_data["phone_number"],
+                    user_data["password"],
+                    user_data["plan_id"],
+                    user_data["payment"],
+                )
+            )
+
+        return result["user_data"]
+
 
     @staticmethod
     def create_user_performer(user_data: dict) -> dict[str, Any]:
@@ -29,7 +71,6 @@ class UserController:
 
         return user
 
-
     @staticmethod
     def update_user(user_id: int, updated_user_data: dict) -> dict[str, Any]:
         if "password" in updated_user_data:
@@ -39,17 +80,15 @@ class UserController:
 
         return updated_user
 
-
     @staticmethod
     def delete_user(user_id: int) -> dict[str, Any]:
         User.delete_record_by_id(user_id)
 
         return {"message": "User profile was deleted successfully"}
 
-
     @staticmethod
     def authenticate_user(login_field: str, password: str):
-        if not re.match(r"\w+@[a-zA-Z_]+\.[a-zA-Z]{2,6}", login_field):
+        if re.match(r"\w+@[a-zA-Z_]+\.[a-zA-Z]{2,6}", login_field):
             user = User.get_user_by_field(field="email", value=login_field)
         else:
             user = User.get_user_by_field(field="username", value=login_field)
