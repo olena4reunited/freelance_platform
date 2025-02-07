@@ -2,8 +2,6 @@ from typing import Literal
 
 from pydantic import BaseModel, condecimal, conint
 
-from server.app.schemas.plans_schemas import PlanEnum
-
 
 class UserCreate(BaseModel):
     first_name: str
@@ -16,12 +14,11 @@ class UserCreate(BaseModel):
 
 
 class UserCreateCustomer(UserCreate):
-    plan_id: Literal[3] = PlanEnum.customer.value
     payment: str
 
 
 class UserCreatePerformer(UserCreate):
-    plan_id: Literal[4] = PlanEnum.performer.value
+    pass
 
 
 class UserUpdate(BaseModel):
@@ -47,4 +44,4 @@ class UserResponse(BaseModel):
     description: str | None
     balance: condecimal(max_digits=10, decimal_places=2) | None
     rating: conint(ge=0, le=5) | None
-    plan_id: PlanEnum
+    plan_name: str

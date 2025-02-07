@@ -44,7 +44,7 @@ class UserValidator:
         if User.get_user_by_field("email", self.email):
             raise HTTPException(status_code=400, detail="Email is already registered")
 
-        email_regex = r"\w+@[a-zA-Z_]+\.[a-zA-Z]{2,6}"
+        email_regex = r"^[a-zA-Z_\.a-zA-Z]+@[a-zA-Z_]+\.[a-zA-Z]{2,6}"
 
         if not re.match(email_regex, self.email):
             raise HTTPException(status_code=400, detail="Invalid email")
@@ -81,7 +81,7 @@ class UserValidator:
             raise HTTPException(status_code=400, detail="Phone number is already registered")
 
 
-        phone_number_regex = r"^\+?\d{10, 12}$"
+        phone_number_regex = r"^\+?\d{10,12}$"
 
         if not re.match(phone_number_regex, self.phone_number):
             raise HTTPException(status_code=400, detail="Invalid phone number")
