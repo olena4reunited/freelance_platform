@@ -15,32 +15,15 @@ class UserController:
 
         user_data["payment"] = encrypt_data(bytes(user_data["payment"], encoding="utf-8"))
 
-        with PostgresDatabase() as db:
-            result = db.fetch_one(
+        with PostgresDatabase(on_commit=True) as db:
+            user = db.fetch(
                 """
-                WITH new_user AS (
-                    INSERT INTO users (first_name, last_name, username, email, phone_number, password, plan_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id, first_name, last_name, username, email, phone_number, password, photo_link, description, balance, rating, plan_id
+                WITH selected_plan AS (
+                    SELECT id, name FROM plans WHERE name = 'customer' LIMIT 1
                 )
-                INSERT INTO payments (user_id, payment)
-                VALUES ((SELECT id FROM new_user), %s)
-                RETURNING (
-                    SELECT json_build_object(
-                        'id', id,
-                        'first_name', first_name,
-                        'last_name', last_name,
-                        'username', username,
-                        'email', email,
-                        'phone_number', phone_number,
-                        'photo_link', photo_link,
-                        'description', description,
-                        'balance', balance,
-                        'rating', rating,
-                        'plan_id', plan_id
-                    ) 
-                    FROM new_user
-                ) AS user_data;
+                INSERT INTO users (first_name, last_name, username, email, phone_number, password, plan_id)
+                VALUES (%s, %s, %s, %s, %s, %s, (SELECT id FROM selected_plan))
+                RETURNING id, first_name, last_name, username, email, phone_number, photo_link, description, balance, rating, (SELECT name FROM selected_plan) AS plan_name;
                 """,
                 (
                     user_data["first_name"],
@@ -49,21 +32,49 @@ class UserController:
                     user_data["email"],
                     user_data["phone_number"],
                     user_data["password"],
-                    user_data["plan_id"],
+                )
+            )
+
+            db.execute_query(
+                """
+                INSERT INTO payments (user_id, payment)
+                VALUES (%s, %s)
+                """,
+                (
+                    user["id"],
                     user_data["payment"],
                 )
             )
 
-        return result["user_data"]
+        return user
 
 
     @staticmethod
     def create_user_performer(user_data: dict) -> dict[str, Any]:
         user_data["password"] = get_password_hash(user_data["password"])
         user_data.pop("password_repeat")
-        new_user = User.create_record(**user_data)
 
-        return new_user
+        with PostgresDatabase(on_commit=True) as db:
+            result = db.fetch(
+                """
+                WITH selected_plan AS (
+                    SELECT id, name FROM plans WHERE name = 'performer' LIMIT 1
+                )
+                INSERT INTO users (first_name, last_name, username, email, phone_number, password, plan_id)
+                VALUES (%s, %s, %s, %s, %s, %s, (SELECT id FROM selected_plan))
+                RETURNING id, first_name, last_name, username, email, phone_number, photo_link, description, balance, rating, (SELECT name FROM selected_plan) AS plan_name;
+                """,
+                (
+                    user_data["first_name"],
+                    user_data["last_name"],
+                    user_data["username"],
+                    user_data["email"],
+                    user_data["phone_number"],
+                    user_data["password"],
+                )
+            )
+
+            return result
 
     @staticmethod
     def get_user(user_id: int) -> dict[str, Any]:
