@@ -27,7 +27,7 @@ class BaseModel:
         columns = ", ".join(kwargs.keys())
         values_placeholder = ", ".join(["%s"] * len(kwargs))
 
-        with PostgresDatabase() as db:
+        with PostgresDatabase(on_commit=True) as db:
             return db.fetch(
                 f"""
                 INSERT INTO {cls.table_name} ({columns}) VALUES ({values_placeholder})
@@ -39,7 +39,7 @@ class BaseModel:
     def update_record(cls, record_id: int, **kwargs) -> dict[str, Any] | None:
         set_clause = ", ".join(f"{key} = %s" for key in kwargs.keys())
 
-        with PostgresDatabase() as db:
+        with PostgresDatabase(on_commit=True) as db:
             return db.fetch(
                 f"UPDATE {cls.table_name} SET {set_clause} WHERE id = %s",
                 (*kwargs.values(), record_id,),
@@ -47,10 +47,8 @@ class BaseModel:
 
     @classmethod
     def delete_record_by_id(cls, record_id: int) -> int | None:
-        with PostgresDatabase() as db:
+        with PostgresDatabase(on_commit=True) as db:
             return db.execute_query(
                 f"DELETE FROM {cls.table_name} WHERE id = %s",
                 (record_id,),
             )
-
-
