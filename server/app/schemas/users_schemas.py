@@ -22,15 +22,15 @@ class UserCreatePerformer(UserCreate):
 
 
 class UserUpdate(BaseModel):
-    first_name: str | None
-    last_name: str | None
-    username: str | None
-    email: str | None
-    phone_number: str | None
-    password: str | None
-    password_repeat: str | None
-    photo_link: str | None
-    description: str | None
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    email: str | None = None
+    phone_number: str | None = None
+    password: str | None = None
+    password_repeat: str | None = None
+    photo_link: str | None = None
+    description: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -45,3 +45,9 @@ class UserResponse(BaseModel):
     balance: condecimal(max_digits=10, decimal_places=2) | None
     rating: conint(ge=0, le=5) | None
     plan_name: str
+
+
+class UserCreateToken(BaseModel):
+    username: str | None = None
+    email: str | None = None
+    password: str
