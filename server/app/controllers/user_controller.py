@@ -1,10 +1,21 @@
-import re
+from datetime import timedelta
 from typing import Any
+import threading
 
-from server.app.models.models import User
-from server.app.utils.auth import get_password_hash, verify_password
+from server.app.models.models import User, Plan
+from server.app.controllers.payment_controller import PaymentController
+from server.app.utils.auth import (
+    get_password_hash,
+    create_token,
+    refresh_token,
+    verify_token
+)
 from server.app.utils.crypto import encrypt_data
 from server.app.database.database import PostgresDatabase
+from server.app.utils.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS
+)
 
 
 class UserController:
@@ -35,16 +46,8 @@ class UserController:
                 )
             )
 
-            db.execute_query(
-                """
-                INSERT INTO payments (user_id, payment)
-                VALUES (%s, %s)
-                """,
-                (
-                    user["id"],
-                    user_data["payment"],
-                )
-            )
+            payment_threading = threading.Thread(target=PaymentController.create_payment, args=(user["id"], user["payment"]))
+            payment_threading.start()
 
         return user
 
@@ -77,6 +80,39 @@ class UserController:
             return result
 
     @staticmethod
+    def authenticate_user(user_data: dict) -> dict[str, Any]:
+        user = dict()
+
+        if user_data["username"]:
+            user = User.get_user_by_field("username", user_data["username"])
+        elif user_data["email"]:
+            user = User.get_user_by_field("email", user_data["email"])
+
+        plan_name = Plan.get_record_by_id(user["plan_id"])
+
+        user_data_tokenize = {
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "username": user["username"],
+            "email": user["email"],
+            "phone_number": user["phone_number"],
+            "plan_name": plan_name["name"],
+        }
+
+        access_tkn = create_token(user_data_tokenize, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        refresh_tkn = create_token(user_data_tokenize, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+
+        return {
+            "access_token": access_tkn,
+            "refresh_token": refresh_tkn,
+            "token_type": "bearer"
+        }
+
+    @staticmethod
+    def refresh_bearer_token(refresh_tkn: str) -> dict[str, Any]:
+        return refresh_token(refresh_tkn)
+
+    @staticmethod
     def get_user(user_id: int) -> dict[str, Any]:
         user = User.get_record_by_id(user_id)
 
@@ -98,19 +134,13 @@ class UserController:
         return {"message": "User profile was deleted successfully"}
 
     @staticmethod
-    def authenticate_user(login_field: str, password: str):
-        if re.match(r"\w+@[a-zA-Z_]+\.[a-zA-Z]{2,6}", login_field):
-            user = User.get_user_by_field(field="email", value=login_field)
-        else:
-            user = User.get_user_by_field(field="username", value=login_field)
+    def get_user_by_token(access_tkn: str) -> dict[str, Any]:
+        username = verify_token(access_tkn)["content"]["username"]
 
-        if not user:
-            return False
-        if not verify_password(password, user["password"]):
-            return False
+        user = User.get_user_by_field("username", username)
+        plan_name = Plan.get_record_by_id(user["plan_id"])["name"]
+
+        user["plan_name"] = plan_name
+        user.pop("plan_id")
 
         return user
-
-    @staticmethod
-    def verify_user():
-        ...
