@@ -46,7 +46,7 @@ class UserController:
                 )
             )
 
-            payment_threading = threading.Thread(target=PaymentController.create_payment, args=(user["id"], user["payment"]))
+            payment_threading = threading.Thread(target=PaymentController.create_payment, args=(user["id"], user_data["payment"]))
             payment_threading.start()
 
         return user
