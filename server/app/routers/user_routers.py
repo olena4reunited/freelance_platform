@@ -1,7 +1,7 @@
 from typing import Any
 
 import jwt
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends, Query
 from starlette import status
 
 from server.app.schemas.token_schemas import Token
@@ -17,7 +17,7 @@ from server.app.validators.user_validators import (
     UserTokenValidator,
     MethodEnum
 )
-
+from server.app.utils.dependencies import role_required, get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -94,34 +94,16 @@ def refresh_user_token(refresh_tkn: dict[str, str]):
 
 
 @router.get("/me", response_model=UserResponse)
-def read_user_me(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Authorization header")
-
-    try:
-        scheme, token = authorization.split()
-        if scheme.lower() != "bearer":
-            raise ValueError("Invalid scheme")
-
-        user = UserController.get_user_by_token(token)
-
-        return user
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Authorization header format")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+def read_user_me(user: dict[str, Any] = Depends(role_required(["admin", "moderator", "customer", "performer"]))):
+    return user
 
 
 @router.patch("/me", response_model=UserResponse)
-def update_user( updated_user_data: dict[str, Any], authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Authorization header")
-
+def update_user(
+        updated_user_data: dict[str, Any],
+        user: dict[str, Any] = Depends(role_required(["admin", "moderator", "customer", "performer"]))
+):
     try:
-        scheme, token = authorization.split()
-        if scheme.lower() != "bearer":
-            raise ValueError("Invalid scheme")
-
         UserValidator(
             MethodEnum.update,
             updated_user_data.get("username", None),
@@ -134,23 +116,72 @@ def update_user( updated_user_data: dict[str, Any], authorization: str = Header(
             .validate_password() \
             .validate_phone_number()
 
-        user = UserController.get_user_by_token(token)
+        return UserController.update_user(user["id"], updated_user_data)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-        return UserController.update_user(user["id"], **updated_user_data)
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user: dict[str, Any] = Depends(role_required(["admin", "moderator", "customer", "performer"]))):
+    try:
+        UserController.delete_user(user["id"])
+        return
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/list", response_model=list[UserResponse])
+def read_all_users(
+        user = Depends(role_required(["admin", "moderator"])),
+        plan: str = Query(None, description="filter by role"),
+        limit: int = Query(None, description="number of users to return")
+):
+    try:
+        return UserController.get_all_users(plan, limit)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: int):
+def get_user(
+        user_id: int,
+        user = Depends(role_required(["admin", "moderator"]))
+):
     try:
         return UserController.get_user(user_id)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.patch("/{user_id}", response_model=UserResponse)
+def edit_user(
+        user_id: int,
+        updated_user_data: dict[str, Any],
+        user = Depends(role_required(["admin"]))
+):
+    try:
+        UserValidator(
+            MethodEnum.update,
+            updated_user_data.get("username", None),
+            updated_user_data.get("email", None),
+            updated_user_data.get("password", None),
+            updated_user_data.get("password_repeat", None),
+            updated_user_data.get("phone_number", None)) \
+            .validate_username() \
+            .validate_email() \
+            .validate_password() \
+            .validate_phone_number()
+
+        return UserController.update_user(user_id, updated_user_data)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.delete("/users/{user_id}")
-def delete_user(user_id: int):
+def delete_user(
+        user_id: int,
+        user = Depends(role_required(["admin"]))
+):
     try:
         return UserController.delete_user(user_id)
     except Exception as e:

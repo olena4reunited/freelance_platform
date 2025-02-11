@@ -36,13 +36,13 @@ class BaseModel:
             )
 
     @classmethod
-    def update_record(cls, record_id: int, **kwargs) -> dict[str, Any] | None:
+    def update_record(cls, record_id: int, **kwargs) -> int | None:
         set_clause = ", ".join(f"{key} = %s" for key in kwargs.keys())
 
         with PostgresDatabase(on_commit=True) as db:
-            return db.fetch(
+            return db.execute_query(
                 f"UPDATE {cls.table_name} SET {set_clause} WHERE id = %s",
-                (*kwargs.values(), record_id,),
+                tuple(kwargs.values()) + (record_id,),
             )
 
     @classmethod

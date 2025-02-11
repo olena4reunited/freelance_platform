@@ -2,6 +2,8 @@ from datetime import timedelta
 from typing import Any
 import threading
 
+from starlette import status
+
 from server.app.models.models import User, Plan
 from server.app.controllers.payment_controller import PaymentController
 from server.app.utils.auth import (
@@ -119,21 +121,6 @@ class UserController:
         return user
 
     @staticmethod
-    def update_user(user_id: int, updated_user_data: dict) -> dict[str, Any]:
-        if "password" in updated_user_data:
-            updated_user_data["password"] = get_password_hash(updated_user_data["password"])
-
-        updated_user = User.update_record(user_id, **updated_user_data)
-
-        return updated_user
-
-    @staticmethod
-    def delete_user(user_id: int) -> dict[str, Any]:
-        User.delete_record_by_id(user_id)
-
-        return {"message": "User profile was deleted successfully"}
-
-    @staticmethod
     def get_user_by_token(access_tkn: str) -> dict[str, Any]:
         username = verify_token(access_tkn)["content"]["username"]
 
@@ -144,3 +131,54 @@ class UserController:
         user.pop("plan_id")
 
         return user
+
+    @staticmethod
+    def get_all_users(
+            role: str,
+            limit: int = 0
+    ) -> list[dict[str, Any]]:
+        with PostgresDatabase() as db:
+            query = """
+                SELECT u.id, u.first_name, u.last_name, u.username, u.email, u.phone_number, u.photo_link, u.description, u.balance, u.rating, p.name as plan_name
+                FROM users u
+                INNER JOIN plans p ON u.plan_id = p.id 
+            """
+            params = tuple()
+
+            if role:
+                query += " WHERE p.name = %s"
+                params += (role,)
+            if limit:
+                query += " LIMIT %s"
+                params += (limit,)
+
+            return db.fetch(query + ";", params, is_all=True)
+
+
+    @staticmethod
+    def update_user(user_id: int, updated_user_data: dict) -> dict[str, Any]:
+        if "password" in updated_user_data:
+            updated_user_data["password"] = get_password_hash(updated_user_data["password"])
+
+        set_clause = ", ".join(f"{key} = %s" for key in updated_user_data.keys())
+
+        with PostgresDatabase() as db:
+            db.execute_query(
+                f"UPDATE users SET {set_clause} WHERE id = %s",
+                tuple(updated_user_data.values()) + (user_id,),
+            )
+
+            return db.fetch(
+                """
+                    SELECT u.id, u.first_name, u.last_name, u.username, u.email, u.phone_number, u.photo_link, u.description, u.balance, u.rating, p.name as plan_name
+                    FROM users u
+                    INNER JOIN plans p ON u.plan_id = p.id 
+                    WHERE u.id = %s;
+                """,
+                (user_id, )
+            )
+
+
+    @staticmethod
+    def delete_user(user_id: int) -> None:
+        User.delete_record_by_id(user_id)
