@@ -17,7 +17,7 @@ from server.app.validators.user_validators import (
     UserTokenValidator,
     MethodEnum
 )
-from server.app.utils.dependencies import role_required, get_current_user
+from server.app.utils.dependencies import required_plans, get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -94,14 +94,16 @@ def refresh_user_token(refresh_tkn: dict[str, str]):
 
 
 @router.get("/me", response_model=UserResponse)
-def read_user_me(user: dict[str, Any] = Depends(role_required(["admin", "moderator", "customer", "performer"]))):
+@required_plans(["admin", "moderator", "customer", "performer"])
+def read_user_me(user: dict[str, Any] = Depends(get_current_user)):
     return user
 
 
 @router.patch("/me", response_model=UserResponse)
+@required_plans(["admin", "moderator", "customer", "performer"])
 def update_user(
         updated_user_data: dict[str, Any],
-        user: dict[str, Any] = Depends(role_required(["admin", "moderator", "customer", "performer"]))
+        user: dict[str, Any] = Depends(get_current_user)
 ):
     try:
         UserValidator(
@@ -122,7 +124,10 @@ def update_user(
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user: dict[str, Any] = Depends(role_required(["admin", "moderator", "customer", "performer"]))):
+@required_plans(["admin", "moderator", "customer", "performer"])
+def delete_user(
+        user : dict[str, Any] = Depends(get_current_user)
+):
     try:
         UserController.delete_user(user["id"])
         return
@@ -131,10 +136,11 @@ def delete_user(user: dict[str, Any] = Depends(role_required(["admin", "moderato
 
 
 @router.get("/list", response_model=list[UserResponse])
+@required_plans(["admin", "moderator"])
 def read_all_users(
-        user = Depends(role_required(["admin", "moderator"])),
         plan: str = Query(None, description="filter by role"),
-        limit: int = Query(None, description="number of users to return")
+        limit: int = Query(None, description="number of users to return"),
+        user : dict[str, Any] = Depends(get_current_user)
 ):
     try:
         return UserController.get_all_users(plan, limit)
@@ -143,9 +149,10 @@ def read_all_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
+@required_plans(["admin", "moderator"])
 def get_user(
         user_id: int,
-        user = Depends(role_required(["admin", "moderator"]))
+        user : dict[str, Any] = Depends(get_current_user)
 ):
     try:
         return UserController.get_user(user_id)
@@ -154,10 +161,11 @@ def get_user(
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
+@required_plans(["admin"])
 def edit_user(
         user_id: int,
         updated_user_data: dict[str, Any],
-        user = Depends(role_required(["admin"]))
+        user : dict[str, Any] = Depends(get_current_user)
 ):
     try:
         UserValidator(
@@ -178,9 +186,10 @@ def edit_user(
 
 
 @router.delete("/users/{user_id}")
+@required_plans(["admin"])
 def delete_user(
         user_id: int,
-        user = Depends(role_required(["admin"]))
+        user : dict[str, Any] = Depends(get_current_user)
 ):
     try:
         return UserController.delete_user(user_id)

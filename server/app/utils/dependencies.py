@@ -1,11 +1,12 @@
 from functools import wraps
-from typing import Any
+from typing import Any, Annotated
 
 import jwt
 from fastapi import Security, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette import status
 
+from server.app.controllers.user_controller import UserController
 from server.app.database.database import PostgresDatabase
 from server.app.models.models import User, Plan
 from server.app.utils.auth import verify_token
@@ -28,7 +29,7 @@ def handle_jwt_errors(func):
     return wrapper
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict[str, Any] | None:
+async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]) -> dict[str, Any] | None:
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -37,10 +38,18 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         )
 
     try:
-        payload = verify_token(credentials.credentials)
-        username = payload.get("sub")
+        token = credentials.credentials
+        payload = verify_token(token)
+        user = UserController.get_user_by_token(token)
 
-        return User.get_user_by_field("username", username)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or token invalid",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return user
 
     except jwt.PyJWTError as e:
         raise HTTPException(
@@ -51,19 +60,20 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
 
 
 @handle_jwt_errors
-def role_required(allowed_plans: list[str]):
-    def dependency(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
-        plan_name = Plan.get_record_by_id(user["plan_id"])["name"]
+def required_plans(allowed_plans: list[str]):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
+            plan_name = user["plan_name"]
 
-        if not plan_name:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+            if not plan_name:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+            if plan_name not in allowed_plans:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access for current user denied"
+                )
 
-        if plan_name not in allowed_plans:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access for current user denied"
-            )
-
-        return user
-
-    return dependency
+            return func(*args, user=user, **kwargs)
+        return wrapper
+    return decorator
