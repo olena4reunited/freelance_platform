@@ -134,7 +134,7 @@ class UserController:
 
     @staticmethod
     def get_all_users(
-            role: str,
+            plan: str,
             limit: int = 0
     ) -> list[dict[str, Any]]:
         with PostgresDatabase() as db:
@@ -145,9 +145,9 @@ class UserController:
             """
             params = tuple()
 
-            if role:
+            if plan:
                 query += " WHERE p.name = %s"
-                params += (role,)
+                params += (plan,)
             if limit:
                 query += " LIMIT %s"
                 params += (limit,)
