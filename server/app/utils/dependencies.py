@@ -77,3 +77,39 @@ def required_plans(allowed_plans: list[str]):
             return func(*args, user=user, **kwargs)
         return wrapper
     return decorator
+
+
+def required_permissions(permissions: list[str]):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
+            plan_name = user["plan_name"]
+
+            if not plan_name:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Plan not found"
+                )
+
+            with PostgresDatabase() as db:
+                user_permissions = db.fetch(
+                    """
+                        SELECT prm.name AS permission_name
+                        FROM plans pln
+                        INNER JOIN plans_permissions pp ON pln.id = pp.plan_id
+                        INNER JOIN permissions prm ON pp.permission_id = prm.id
+                        WHERE pln.name = %s
+                    """,
+                    (plan_name, ),
+                    is_all=True
+                )
+
+            if not set(permissions).issubset({perm["permission_name"] for perm in user_permissions}):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access for current user denied"
+                )
+
+            return func(*args, user=user, **kwargs)
+        return wrapper
+    return decorator
