@@ -30,3 +30,15 @@ class User(BaseModel):
 
 class Payment(BaseModel):
     table_name = "payments"
+
+    @staticmethod
+    def get_payments_by_user(user_id: int) -> list[dict[str, Any]]:
+        with PostgresDatabase() as db:
+            return db.fetch(
+                """
+                    SELECT id, payment FROM payments
+                    WHERE user_id = %s;
+                """,
+                (user_id, ),
+                is_all=True
+            )

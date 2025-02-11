@@ -38,3 +38,10 @@ def decrypt_data(encrypted_data: bytes) -> bytes:
     )
 
     return decrypted_data
+
+
+def get_masked_payment(encrypted_data: bytes) -> str:
+    decrypted_data = decrypt_data(encrypted_data).decode("utf-8")
+    masked_payment = "****" * 3 + decrypted_data[-4:-1]
+
+    return masked_payment
