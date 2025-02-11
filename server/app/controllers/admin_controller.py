@@ -1,7 +1,7 @@
 from typing import Any
 
 from server.app.database.database import PostgresDatabase
-from server.app.models.models import User, Plan, Permission
+from server.app.models.models import Permission
 
 
 class AdminController:
