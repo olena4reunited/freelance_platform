@@ -1,7 +1,7 @@
 from typing import Any
 
 from server.app.database.database import PostgresDatabase
-from server.app.models.models import Payment
+from server.app.models.payment_model import Payment
 from server.app.utils.crypto import encrypt_data, get_masked_payment
 
 
