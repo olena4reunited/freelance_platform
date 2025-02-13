@@ -11,10 +11,6 @@ def load_config() -> dict:
         return json.load(config_file)
 
 
-def get_db() -> psycopg2.extensions.connection:
-    return psycopg2.connect(**load_config())
-
-
 class PostgresDatabase:
     def __init__(self, on_commit: bool = False):
         self.config = load_config()
