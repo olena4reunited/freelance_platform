@@ -21,7 +21,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 @router.post("/add_payment", response_model=PaymentResponse)
 @required_plans(["customer", "performer"])
-@required_permissions(["create_payment"])
+@required_permissions(["create_payment", "read_own_payment_list", "read_own_payment_details"])
 def add_payment_details(
         payment_data: PaymentCreate,
         user: dict[str, Any] = Depends(get_current_user)
@@ -40,7 +40,7 @@ def add_payment_details(
 
 @router.get("/me/list", response_model=Union[list[PaymentResponse], PaymentResponse])
 @required_plans(["customer", "performer"])
-@required_permissions(["get_own_payment_list"])
+@required_permissions(["read_own_payment_list"])
 def get_payment_list(
         user: dict[str, Any] = Depends(get_current_user)
 ):
@@ -55,7 +55,7 @@ def get_payment_list(
 
 @router.get("/me/list/{payment_id}", response_model=PaymentResponse)
 @required_plans(["customer", "performer"])
-@required_permissions(["get_own_payment_details"])
+@required_permissions(["read_own_payment_list", "read_own_payment_details"])
 def get_payment_details(
         payment_id: int,
         user: dict[str, Any] = Depends(get_current_user)
@@ -74,7 +74,7 @@ def get_payment_details(
 
 @router.delete("/me/list/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
 @required_plans(["customer", "performer"])
-@required_permissions(["delete_payment"])
+@required_permissions(["read_own_payment_details", "delete_own_payment"])
 def delete_payment(
         payment_id: int,
         user: dict[str, Any] = Depends(get_current_user)
@@ -93,7 +93,7 @@ def delete_payment(
 
 @router.get("/list", response_model=Union[list[PaymentResponseExtended], PaymentResponseExtended])
 @required_plans(["admin", "moderator"])
-@required_permissions(["get_all_users_payments"])
+@required_permissions(["read_all_users_payments"])
 def get_all_payments(
         user: dict[str, Any] = Depends(get_current_user)
 ):
@@ -108,7 +108,7 @@ def get_all_payments(
 
 @router.get("/{user_id}/list", response_model=PaymentResponseExtended)
 @required_plans(["admin", "moderator"])
-@required_permissions(["get_all_users_payments", "get_user_payments"])
+@required_permissions(["read_all_users_payments", "read_user_payments"])
 def get_user_payments(
         user_id: int,
         user: dict[str, Any] = Depends(get_current_user)
@@ -124,7 +124,7 @@ def get_user_payments(
 
 @router.get("/{user_id}/list/{payment_id}", response_model=Union[list[PaymentResponse], PaymentResponse])
 @required_plans(["admin", "moderator"])
-@required_permissions(["get_all_users_payments", "get_user_payments", "get_payment_details"])
+@required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details"])
 def get_user_payment_details(
         user_id: int,
         payment_id: int,
@@ -141,7 +141,7 @@ def get_user_payment_details(
 
 @router.delete("/{user_id}/list/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
 @required_plans(["admin"])
-@required_permissions(["get_all_users_payments", "get_user_payments", "get_payment_details", "delete_user_payment"])
+@required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details", "delete_user_payment"])
 def delete_user_payment(
         user_id: int,
         payment_id: int,

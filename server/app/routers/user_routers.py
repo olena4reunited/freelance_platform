@@ -17,7 +17,11 @@ from server.app.validators.user_validators import (
     UserTokenValidator,
     MethodEnum
 )
-from server.app.utils.dependencies import required_plans, get_current_user
+from server.app.utils.dependencies import (
+    get_current_user,
+    required_plans,
+    required_permissions
+)
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -96,12 +100,14 @@ def refresh_user_token(refresh_tkn: dict[str, str]):
 
 @router.get("/me", response_model=UserResponse)
 @required_plans(["admin", "moderator", "customer", "performer"])
+@required_permissions(["read_own_user_details"])
 def read_user_me(user: dict[str, Any] = Depends(get_current_user)):
     return user
 
 
 @router.patch("/me", response_model=UserResponse)
 @required_plans(["admin", "moderator", "customer", "performer"])
+@required_permissions(["read_own_user_details", "update_own_user_details"])
 def update_user(
         updated_user_data: dict[str, Any],
         user: dict[str, Any] = Depends(get_current_user)
@@ -126,6 +132,7 @@ def update_user(
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 @required_plans(["admin", "moderator", "customer", "performer"])
+@required_permissions(["read_own_user_details", "update_own_user_details", "delete_own_user"])
 def delete_user(
         user : dict[str, Any] = Depends(get_current_user)
 ):
@@ -138,6 +145,7 @@ def delete_user(
 
 @router.get("/list", response_model=list[UserResponse])
 @required_plans(["admin", "moderator"])
+@required_permissions(["read_all_users_list"])
 def read_all_users(
         plan: str = Query(None, description="filter by role"),
         limit: int = Query(None, description="number of users to return"),
@@ -151,6 +159,7 @@ def read_all_users(
 
 @router.get("/{user_id}", response_model=UserResponse)
 @required_plans(["admin", "moderator"])
+@required_permissions(["read_all_users_list", "read_user_details"])
 def get_user(
         user_id: int,
         user : dict[str, Any] = Depends(get_current_user)
@@ -163,6 +172,7 @@ def get_user(
 
 @router.patch("/{user_id}", response_model=UserResponse)
 @required_plans(["admin"])
+@required_permissions(["read_all_users_list", "read_user_details", "update_user_details"])
 def edit_user(
         user_id: int,
         updated_user_data: dict[str, Any],
@@ -188,6 +198,7 @@ def edit_user(
 
 @router.delete("/users/{user_id}")
 @required_plans(["admin"])
+@required_permissions(["read_user_details", "update_user_details", "delete_user"])
 def delete_user(
         user_id: int,
         user : dict[str, Any] = Depends(get_current_user)
