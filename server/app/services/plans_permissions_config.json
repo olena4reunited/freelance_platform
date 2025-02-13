@@ -1,0 +1,70 @@
+[
+  {
+    "name": "read_own_user_details",
+    "plans": ["admin", "moderator", "customer", "performer"]
+  },
+  {
+    "name": "update_own_user_details",
+    "plans": ["admin", "moderator", "customer", "performer"]
+  },
+  {
+    "name": "delete_own_user",
+    "plans": ["admin", "moderator", "customer", "performer"]
+  },
+  {
+    "name": "read_all_users_list",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "read_user_details",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "update_user_details",
+    "plans": ["admin"]
+  },
+  {
+    "name": "delete_user",
+    "plans": ["admin"]
+  },
+  {
+    "name": "create_payment",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_own_payment_list",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_own_payment_details",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "delete_own_payment",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_all_users_payments",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "read_user_payments",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "read_user_payment_details",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "delete_user_payment",
+    "plans": ["admin"]
+  },
+  {
+    "name": "",
+    "plans": []
+  },
+  {
+    "name": "",
+    "plans": []
+  }
+]
