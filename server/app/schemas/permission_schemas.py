@@ -6,6 +6,11 @@ class PermissionCreate(BaseModel):
     plans: list[str] | str | None = None
 
 
+class PermissionUpdate(BaseModel):
+    permission: str | None = None
+    plans: list[str] | str | None = None
+
+
 class PermissionResponse(BaseModel):
     plan: str
     permission: str
