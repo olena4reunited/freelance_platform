@@ -2,7 +2,8 @@ from datetime import timedelta
 from typing import Any
 import threading
 
-from server.app.models.models import User, Plan
+from server.app.models.user_model import User
+from server.app.models.plan_model import Plan
 from server.app.controllers.payment_controller import PaymentController
 from server.app.utils.auth import (
     get_password_hash,

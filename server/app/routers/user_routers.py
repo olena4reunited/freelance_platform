@@ -1,7 +1,7 @@
 from typing import Any
 
 import jwt
-from fastapi import APIRouter, HTTPException, Header, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query
 from starlette import status
 
 from server.app.schemas.token_schemas import Token
