@@ -41,7 +41,11 @@ class BaseModel:
 
         with PostgresDatabase(on_commit=True) as db:
             return db.execute_query(
-                f"UPDATE {cls.table_name} SET {set_clause} WHERE id = %s",
+                f"""
+                    UPDATE {cls.table_name} 
+                    SET {set_clause} 
+                    WHERE id = %s
+                """,
                 tuple(kwargs.values()) + (record_id,),
             )
 
