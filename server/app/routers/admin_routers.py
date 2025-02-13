@@ -35,21 +35,6 @@ def get_all_permissions(
         )
 
 
-@router.get("/permissions/me", response_model=list[PermissionResponse])
-@required_plans(["admin", "moderator"])
-@required_permissions(["read_own_permissions"])
-def get_all_permissions(
-        user: dict[str, Any] = Depends(get_current_user)
-):
-    try:
-        return AdminPermissionsController.get_all_permissions_by_plan(user["plan_name"])
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-
-
 @router.post("/permissions", response_model=Union[list[PermissionResponse], PermissionResponse])
 @required_plans(["admin"])
 @required_permissions(["create_permissions"])
@@ -59,6 +44,21 @@ def create_permission(
 ):
     try:
         return AdminPermissionsController.create_permission(permission_data.model_dump())
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.get("/permissions/me", response_model=list[PermissionResponse])
+@required_plans(["admin", "moderator"])
+@required_permissions(["read_own_permissions"])
+def get_all_permissions(
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return AdminPermissionsController.get_all_permissions_by_plan(user["plan_name"])
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -144,3 +144,4 @@ def get_all_plans(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
