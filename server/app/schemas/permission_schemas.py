@@ -12,5 +12,5 @@ class PermissionUpdate(BaseModel):
 
 
 class PermissionResponse(BaseModel):
-    plan: str
     permission: str
+    plan: str
