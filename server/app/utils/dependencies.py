@@ -8,7 +8,6 @@ from starlette import status
 
 from server.app.controllers.user_controller import UserController
 from server.app.database.database import PostgresDatabase
-from server.app.models.models import User, Plan
 from server.app.utils.auth import verify_token
 
 

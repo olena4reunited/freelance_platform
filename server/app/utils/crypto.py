@@ -3,6 +3,7 @@ import os
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
+
 with open(os.path.join(os.path.dirname(__file__), "../../keys/private_key.pem"), "rb") as key_file:
     private_key = serialization.load_pem_private_key(
         key_file.read(),

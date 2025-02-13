@@ -1,7 +1,6 @@
 from fastapi import HTTPException
 from starlette import status
 
-from server.app.controllers.payment_controller import PaymentController
 from server.app.models.models import Payment
 
 

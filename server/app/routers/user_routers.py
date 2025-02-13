@@ -19,6 +19,7 @@ from server.app.validators.user_validators import (
 )
 from server.app.utils.dependencies import required_plans, get_current_user
 
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 
