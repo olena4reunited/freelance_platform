@@ -15,6 +15,12 @@ from server.app.schemas.permission_schemas import (
     PermissionResponse,
     PermissionUpdate
 )
+from server.app.schemas.plan_schemas import (
+    PlanCreate,
+    PlanUpdate,
+    PlanResponse,
+    PlanResponseExtended
+)
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -115,7 +121,7 @@ def delete_permission(
         )
 
 
-@router.get("/plans")
+@router.get("/plans", response_model=Union[list[PlanResponse], PlanResponse])
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_all_permissions"])
 def get_all_plans(
@@ -130,7 +136,23 @@ def get_all_plans(
         )
 
 
-@router.get("/plans/{plan_id}")
+@router.post("/plans", response_model=PlanResponse)
+@required_plans(["admin"])
+@required_permissions(["read_all_plans", "read_plan_details", "create_plans"])
+def create_plan(
+        plan_data: PlanCreate,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return AdminPlansController.create_plan(plan_data.model_dump())
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.get("/plans/{plan_id}", response_model=Union[list[PlanResponseExtended], PlanResponseExtended])
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_all_permissions", "read_plan_details"])
 def get_all_plans(
@@ -145,3 +167,35 @@ def get_all_plans(
             detail=str(e)
         )
 
+
+@router.patch("/plans/{plan_id}", response_model=PlanResponse)
+@required_plans(["admin"])
+@required_permissions(["read_all_plans", "read_plan_details", "update_plan_details"])
+def get_all_plans(
+        plan_id: int,
+        plan_data: PlanUpdate,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return AdminPlansController.update_plan_by_id(plan_id, plan_data.model_dump())
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+@required_plans(["admin"])
+@required_permissions(["read_all_plans", "read_all_permissions", "read_plan_details", "delete_plan"])
+def delete_plan(
+        plan_id: int,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return AdminPlansController.delete_plan_by_id(plan_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
