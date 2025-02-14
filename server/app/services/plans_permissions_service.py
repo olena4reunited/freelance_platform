@@ -10,8 +10,8 @@ def load_json() -> str:
     return json.dumps(json_data)
 
 
-def set_plans_permissions():
-    with PostgresDatabase(on_commit=True) as db:
+def insert_plans() -> None:
+    with PostgresDatabase() as db:
         db.execute_query(
             """
             INSERT INTO plans (name)
@@ -23,6 +23,9 @@ def set_plans_permissions():
             """
         )
 
+
+def set_plans_permissions():
+    with PostgresDatabase(on_commit=True) as db:
         db.execute_query(
             """
                 CREATE OR REPLACE FUNCTION insert_permissions(json_data jsonb)
@@ -37,19 +40,33 @@ def set_plans_permissions():
                             p ->> 'name' AS name,
                             p -> 'plans' AS plans
                         FROM jsonb_array_elements(json_data) p
-                    LOOP
-                        INSERT INTO permissions (name)
-                        VALUES (permission_record.name)
-                        RETURNING id INTO perm_id;
-                
+                        LOOP
+                            BEGIN
+                            
+                            INSERT INTO permissions (name)
+                            VALUES (permission_record.name)
+                            RETURNING id INTO perm_id;
+                            
+                        EXCEPTION WHEN UNIQUE_VIOLATION THEN
+                            CONTINUE;
+                        END;
+                    
                         FOR plan_name IN
                             SELECT jsonb_array_elements_text(permission_record.plans)
                         LOOP
-                            INSERT INTO plans_permissions (plan_id, permission_id)
-                            SELECT id, perm_id
-                            FROM plans
-                            WHERE name = plan_name;
+                            BEGIN
+                            
+                                INSERT INTO plans_permissions (plan_id, permission_id)
+                                SELECT id, perm_id
+                                FROM plans
+                                WHERE name = plan_name;
+                            
+                            EXCEPTION WHEN UNIQUE_VIOLATION THEN
+                                CONTINUE;
+                            
+                            END;
                         END LOOP;
+            
                     END LOOP;
                 END;
                 $$ LANGUAGE plpgsql;
