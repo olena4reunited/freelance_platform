@@ -15,9 +15,14 @@ with open(os.path.join(os.path.dirname(__file__), "../../keys/public_key.pem"), 
     public_key = serialization.load_pem_public_key(key_file.read())
 
 
-def encrypt_data(data_to_encrypt: bytes) -> bytes:
+def encrypt_data(data_to_encrypt: str) -> bytes:
+    if not isinstance(data_to_encrypt, str):
+        data_to_encrypt = str(data_to_encrypt)
+
+    data = bytes(data_to_encrypt, encoding="utf-8")
+
     encrypted_data = public_key.encrypt(
-        data_to_encrypt,
+        data,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
@@ -41,8 +46,8 @@ def decrypt_data(encrypted_data: bytes) -> bytes:
     return decrypted_data
 
 
-def get_masked_payment(encrypted_data: bytes) -> str:
-    decrypted_data = decrypt_data(encrypted_data).decode("utf-8")
-    masked_payment = "****" * 3 + decrypted_data[-4:-1]
+def get_masked_payment(encrypted_data: memoryview) -> str:
+    decrypted_data = decrypt_data(encrypted_data.tobytes()).decode("utf-8")
+    masked_payment = "****" * 3 + decrypted_data[-4:]
 
     return masked_payment
