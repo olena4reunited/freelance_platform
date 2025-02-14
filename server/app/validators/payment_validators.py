@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from starlette import status
 
-from server.app.models.models import Payment
+from server.app.models.payment_model import Payment
 
 
 class PaymentValidator:

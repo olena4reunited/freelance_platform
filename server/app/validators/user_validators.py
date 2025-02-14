@@ -4,7 +4,7 @@ from enum import Enum
 from fastapi import HTTPException
 from starlette import status
 
-from server.app.models.models import User
+from server.app.models.user_model import User
 from server.app.utils.auth import verify_password
 
 
