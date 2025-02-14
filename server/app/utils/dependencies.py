@@ -1,3 +1,4 @@
+import json
 from functools import wraps
 from typing import Any, Annotated
 
@@ -9,6 +10,7 @@ from starlette import status
 from server.app.controllers.user_controller import UserController
 from server.app.database.database import PostgresDatabase
 from server.app.utils.auth import verify_token
+from server.app.utils.redis_client import redis_client
 
 
 security = HTTPBearer()
@@ -90,20 +92,9 @@ def required_permissions(permissions: list[str]):
                     detail="Plan not found"
                 )
 
-            with PostgresDatabase() as db:
-                user_permissions = db.fetch(
-                    """
-                        SELECT prm.name AS permission_name
-                        FROM plans pln
-                        INNER JOIN plans_permissions pp ON pln.id = pp.plan_id
-                        INNER JOIN permissions prm ON pp.permission_id = prm.id
-                        WHERE pln.name = %s
-                    """,
-                    (plan_name, ),
-                    is_all=True
-                )
+            user_permissions = set(json.loads(redis_client.hgetall(plan_name).get("permissions")))
 
-            if not set(permissions).issubset({perm["permission_name"] for perm in user_permissions}):
+            if not set(permissions).issubset(user_permissions):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Access for current user denied"
