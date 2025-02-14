@@ -25,7 +25,7 @@ class UserController:
         user_data["password"] = get_password_hash(user_data["password"])
         user_data.pop("password_repeat")
 
-        user_data["payment"] = encrypt_data(bytes(user_data["payment"], encoding="utf-8"))
+        user_data["payment"] = encrypt_data(user_data["payment"])
 
         with PostgresDatabase(on_commit=True) as db:
             user = db.fetch(
@@ -47,8 +47,13 @@ class UserController:
                 )
             )
 
-            payment_threading = threading.Thread(target=PaymentController.create_payment, args=(user["id"], user_data["payment"]))
-            payment_threading.start()
+            db.execute_query(
+                """
+                    INSERT INTO payments (user_id, payment)
+                    VALUES (%s, %s) 
+                """,
+                (user["id"], user_data["payment"])
+            )
 
         return user
 
@@ -115,9 +120,16 @@ class UserController:
 
     @staticmethod
     def get_user(user_id: int) -> dict[str, Any]:
-        user = User.get_record_by_id(user_id)
-
-        return user
+        with PostgresDatabase() as db:
+            return db. fetch(
+                """
+                    SELECT u.id, u.first_name, u.last_name, u.username, u.email, u.phone_number, u.photo_link, u.description, u.balance, u.rating, p.name as plan_name
+                    FROM users u
+                    INNER JOIN plans p ON u.plan_id = p.id
+                    WHERE u.id = %s
+                """,
+                (user_id,)
+            )
 
     @staticmethod
     def get_user_by_token(access_tkn: str) -> dict[str, Any]:

@@ -196,7 +196,7 @@ def edit_user(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.delete("/users/{user_id}")
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 @required_plans(["admin"])
 @required_permissions(["read_user_details", "update_user_details", "delete_user"])
 def delete_user(
