@@ -11,7 +11,7 @@ def load_json() -> str:
 
 
 def insert_plans() -> None:
-    with PostgresDatabase() as db:
+    with PostgresDatabase(on_commit=True) as db:
         db.execute_query(
             """
             INSERT INTO plans (name)
