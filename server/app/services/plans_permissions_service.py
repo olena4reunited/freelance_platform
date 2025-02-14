@@ -1,4 +1,13 @@
+import json
+
 from server.app.database.database import PostgresDatabase
+
+
+def load_json() -> str:
+    with open("plans_permissions_config.json", "r") as f:
+        json_data = json.load(f)
+
+    return json.dumps(json_data)
 
 
 def set_plans_permissions():
@@ -46,3 +55,14 @@ def set_plans_permissions():
                 $$ LANGUAGE plpgsql;
             """
         )
+
+        json_data = load_json()
+
+        db.execute_query(
+            "SELECT insert_permissions(%s::jsonb);",
+            (json_data,)
+        )
+
+
+if __name__ == "__main__":
+    set_plans_permissions()

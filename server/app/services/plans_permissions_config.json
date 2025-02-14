@@ -60,11 +60,47 @@
     "plans": ["admin"]
   },
   {
-    "name": "",
-    "plans": []
+    "name": "read_all_permissions",
+    "plans": ["admin"]
   },
   {
-    "name": "",
-    "plans": []
+    "name": "read_all_plans",
+    "plans": ["admin"]
+  },
+  {
+    "name": "create_permissions",
+    "plans": ["admin"]
+  },
+  {
+    "name": "read_own_permissions",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "read_permission_details",
+    "plans": ["admin"]
+  },
+  {
+    "name": "update_permission_details",
+    "plans": ["admin"]
+  },
+  {
+    "name": "delete_permission",
+    "plans": ["admin"]
+  },
+  {
+    "name": "read_plan_details",
+    "plans": ["admin"]
+  },
+  {
+    "name": "create_plans",
+    "plans": ["admin"]
+  },
+  {
+    "name": "update_plan_details",
+    "plans": ["admin"]
+  },
+  {
+    "name": "delete_plan",
+    "plans": ["admin"]
   }
 ]
