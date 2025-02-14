@@ -29,7 +29,7 @@ def add_payment_details(
     try:
         return PaymentController.create_payment(
             user["id"],
-            payment_data.payment
+            str(payment_data.payment)
         )
     except Exception as e:
         raise HTTPException(
@@ -106,7 +106,7 @@ def get_all_payments(
         )
 
 
-@router.get("/{user_id}/list", response_model=PaymentResponseExtended)
+@router.get("/{user_id}/list", response_model=Union[list[PaymentResponse], PaymentResponse])
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments", "read_user_payments"])
 def get_user_payments(
@@ -122,7 +122,7 @@ def get_user_payments(
         )
 
 
-@router.get("/{user_id}/list/{payment_id}", response_model=Union[list[PaymentResponse], PaymentResponse])
+@router.get("/{user_id}/list/{payment_id}", response_model=PaymentResponseExtended)
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details"])
 def get_user_payment_details(

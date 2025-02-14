@@ -8,10 +8,19 @@ from server.app.utils.crypto import encrypt_data, get_masked_payment
 class PaymentController:
     @staticmethod
     def create_payment(user_id: int, payment: str) -> dict[str, str]:
-        encrypted_payment = encrypt_data(bytes(payment, "utf-8"))
-        payment = Payment.create_record(user_id=user_id, payment=encrypted_payment)
+        encrypted_payment = encrypt_data(payment)
+
+        with PostgresDatabase(on_commit=True) as db:
+            payment = db.fetch(
+                """
+                    INSERT INTO payments (user_id, payment)
+                    VALUES (%s, %s)
+                    RETURNING id, payment 
+                """,
+                (user_id, encrypted_payment)
+            )
+
         payment["payment"] = get_masked_payment(payment["payment"])
-        payment.pop("user_id")
 
         return payment
 
@@ -54,3 +63,5 @@ class PaymentController:
             )
 
         payment["payment"] = get_masked_payment(payment["payment"])
+
+        return payment
