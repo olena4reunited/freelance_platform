@@ -11,7 +11,7 @@ class AdminPermissionsController:
 
     @staticmethod
     def get_all_permissions_by_plan(plan_name: str) -> list[dict[str, str]] | dict[[str, str]]:
-        return Permission.get_permissions(plan_name)
+        return Permission.get_permissions_by_plan(plan_name)
 
     @staticmethod
     def create_permission(
@@ -66,8 +66,8 @@ class AdminPermissionsController:
             permission_id: int,
             permission_data: dict[str, Any]
     ) -> list[dict[str, Any]] | dict[str, Any]:
-        updated_permission = permission_data["permission"] if permission_data["permission"] else None
-        updated_plans = permission_data["plans"] if permission_data["plans"] else None
+        updated_permission = permission_data.get("permission", None)
+        updated_plans = permission_data.get("plans", None)
 
         with PostgresDatabase(on_commit=True) as db:
             if not updated_plans:
@@ -82,7 +82,7 @@ class AdminPermissionsController:
                     (permission_id,),
                     is_all=True
                 )
-                updated_plans = [plan["plan"] for plan in updated_plans]
+                updated_plans = [plan.get("plan") for plan in updated_plans]
 
             return db.fetch(
                 """
@@ -99,6 +99,10 @@ class AdminPermissionsController:
                         SELECT %s, id
                         FROM plans
                         WHERE name = ANY(%s)
+                        ON CONFLICT (plan_id, permission_id) 
+                        DO UPDATE SET 
+                            permission_id = EXCLUDED.permission_id, 
+                            plan_id = EXCLUDED.plan_id
                     )
                     SELECT prm.name AS permission, pln.name AS plan
                     FROM permissions prm

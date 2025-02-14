@@ -8,18 +8,31 @@ class Permission(BaseModel):
     table_name = "permissions"
 
     @staticmethod
-    def get_permissions(plan_name: str | None = None) -> list[dict[str, Any]] | dict[str, Any]:
-        query = """
-            SELECT pln.name as plan, prm.name as permission
-            FROM permissions prm
-            LEFT JOIN plans_permissions pp ON prm.id = pp.permission_id
-            LEFT JOIN plans pln ON pp.plan_id = pln.id
-        """
-        params = tuple()
-
-        if plan_name:
-            query += " WHERE pln.name = %s"
-            params = (plan_name,)
-
+    def get_permissions() -> list[dict[str, Any]] | dict[str, Any]:
         with PostgresDatabase() as db:
-            return db.fetch(query, params, is_all=True)
+            return db.fetch(
+                """
+                    SELECT pln.name as plan, prm.name as permission
+                    FROM permissions prm
+                    LEFT JOIN plans_permissions pp ON prm.id = pp.permission_id
+                    LEFT JOIN plans pln ON pp.plan_id = pln.id
+                    ORDER BY pln.id;
+                """,
+                is_all=True
+            )
+
+    @staticmethod
+    def get_permissions_by_plan(plan_name: str) -> list[dict[str, Any]] | dict[str, Any]:
+        with PostgresDatabase() as db:
+            return db.fetch(
+                """
+                    SELECT pln.name as plan, prm.name as permission
+                    FROM permissions prm
+                    LEFT JOIN plans_permissions pp ON prm.id = pp.permission_id
+                    LEFT JOIN plans pln ON pp.plan_id = pln.id
+                    WHERE pln.name = %s;
+                """,
+                (plan_name, ),
+                is_all=True
+            )
+

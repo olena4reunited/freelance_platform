@@ -11,7 +11,7 @@ class PlanUpdate(PlanCreate):
 
 class PlanResponse(BaseModel):
     id: int
-    plan: str
+    name: str
 
 
 class PlanResponseExtended(BaseModel):

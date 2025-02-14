@@ -35,7 +35,7 @@ class Plan(BaseModel):
                     UPDATE plans
                     SET name = COALESCE(%s, name)
                     WHERE id = %s
-                    RETURNING id, name AS plan;
+                    RETURNING id, name;
                 """,
                 (plan_name, plan_id)
             )
