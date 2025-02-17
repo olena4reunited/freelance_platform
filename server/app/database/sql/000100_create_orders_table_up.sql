@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS orders (
 	description TEXT,
 	blocked_until TIMESTAMP,
 	is_blocked BOOL,
-	creator_id INTEGER NOT NULL,
+	customer_id INTEGER NOT NULL,
 	performer_id INTEGER,
-	FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
+	FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE,
 	FOREIGN KEY (performer_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
