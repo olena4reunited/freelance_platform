@@ -26,6 +26,7 @@ def create_trigger_delete_blocked_records():
             """
         )
 
+
 def create_trigger_delete_blocked_users():
     with PostgresDatabase() as db:
         db.execute_query(
