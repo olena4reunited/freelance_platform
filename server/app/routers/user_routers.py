@@ -1,6 +1,5 @@
 from typing import Any
 
-import jwt
 from fastapi import APIRouter, Depends, Query
 from starlette import status
 
