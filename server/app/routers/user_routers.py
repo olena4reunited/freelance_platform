@@ -1,7 +1,7 @@
 from typing import Any
 
 import jwt
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, Depends, Query
 from starlette import status
 
 from server.app.schemas.token_schemas import Token
@@ -20,7 +20,12 @@ from server.app.validators.user_validators import (
 from server.app.utils.dependencies import (
     get_current_user,
     required_plans,
-    required_permissions
+    required_permissions,
+    handle_jwt_errors
+)
+from server.app.utils.exceptions import (
+    handle_db_errors,
+    CustomHTTPException
 )
 
 
@@ -28,6 +33,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/customer/register", response_model=UserResponse)
+@handle_db_errors
 def create_user_customer(user_customer_data: UserCreateCustomer):
     try:
         UserValidator(
@@ -43,12 +49,12 @@ def create_user_customer(user_customer_data: UserCreateCustomer):
             .validate_phone_number()
 
         return UserController.create_user_customer(user_customer_data.model_dump())
-
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not register user: {repr(e)}")
 
 
 @router.post("/performer/register", response_model=UserResponse)
+@handle_db_errors
 def create_user_performer(user_performer_data: UserCreatePerformer):
     try:
         UserValidator(
@@ -66,10 +72,11 @@ def create_user_performer(user_performer_data: UserCreatePerformer):
         return UserController.create_user_performer(user_performer_data.model_dump())
 
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not register user: {repr(e)}")
 
 
 @router.post("/token", response_model=Token)
+@handle_db_errors
 def create_user_token(user_data: UserCreateToken):
     try:
         UserTokenValidator(
@@ -79,33 +86,32 @@ def create_user_token(user_data: UserCreateToken):
         .validate_user_exists()
 
         return UserController.authenticate_user(user_data.model_dump())
-
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.unauthorised(detail=f"Could not authenticate user: {repr(e)}")
 
 @router.post("/token/refresh", response_model=Token)
+@handle_jwt_errors
+@handle_db_errors
 def refresh_user_token(refresh_tkn: dict[str, str]):
-    if not refresh_tkn["refresh_token"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Refresh Token")
-
     try:
         return UserController.refresh_bearer_token(refresh_tkn["refresh_token"])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.unauthorised(detail=f"Could not refresh the token: {repr(e)}")
 
 
 @router.get("/me", response_model=UserResponse)
+@handle_db_errors
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details"])
 def read_user_me(user: dict[str, Any] = Depends(get_current_user)):
-    return user
+    try:
+        return user
+    except Exception as e:
+        CustomHTTPException.unauthorised(detail=f"Could not read user: {repr(e)}")
 
 
 @router.patch("/me", response_model=UserResponse)
+@handle_db_errors
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details", "update_own_user_details"])
 def update_user(
@@ -127,10 +133,11 @@ def update_user(
 
         return UserController.update_user(user["id"], updated_user_data)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not update user: {repr(e)}")
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+@handle_db_errors
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details", "update_own_user_details", "delete_own_user"])
 def delete_user(
@@ -140,10 +147,11 @@ def delete_user(
         UserController.delete_user(user["id"])
         return
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not delete user: {repr(e)}")
 
 
 @router.get("/list", response_model=list[UserResponse])
+@handle_db_errors
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_list"])
 def read_all_users(
@@ -154,10 +162,11 @@ def read_all_users(
     try:
         return UserController.get_all_users(plan, limit)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not retrieve users: {repr(e)}")
 
 
 @router.get("/{user_id}", response_model=UserResponse)
+@handle_db_errors
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_list", "read_user_details"])
 def get_user(
@@ -167,10 +176,11 @@ def get_user(
     try:
         return UserController.get_user(user_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not retrieve user: {repr(e)}")
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
+@handle_db_errors
 @required_plans(["admin"])
 @required_permissions(["read_all_users_list", "read_user_details", "update_user_details"])
 def edit_user(
@@ -193,10 +203,11 @@ def edit_user(
 
         return UserController.update_user(user_id, updated_user_data)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not update user: {repr(e)}")
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@handle_db_errors
 @required_plans(["admin"])
 @required_permissions(["read_user_details", "update_user_details", "delete_user"])
 def delete_user(
@@ -206,4 +217,4 @@ def delete_user(
     try:
         return UserController.delete_user(user_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        CustomHTTPException.bad_request(detail=f"Could not delete user: {repr(e)}")

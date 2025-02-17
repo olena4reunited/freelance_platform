@@ -4,15 +4,10 @@ from typing import Any
 
 import jwt
 from cryptography.hazmat.primitives import serialization
-from fastapi import HTTPException
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
-from starlette import status
 
-from server.app.utils.config import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    REFRESH_TOKEN_EXPIRE_DAYS
-)
+from server.app.utils.exceptions import CustomHTTPException
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -58,8 +53,8 @@ def refresh_token(token: str):
 
     user_data = payload["content"]
 
-    access_tkn = create_token(user_data, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_tkn = create_token(user_data, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    access_tkn = create_token(user_data, timedelta(minutes=3000))
+    refresh_tkn = create_token(user_data, timedelta(days=7))
 
     return (
         {
@@ -71,19 +66,13 @@ def refresh_token(token: str):
 
 
 def verify_token(token: str) -> dict[str, Any] | None:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"}
-    )
-
     try:
         payload = jwt.decode(token, public_key, algorithms=["RS256"])
 
         if not payload.get("sub") or not isinstance(payload.get("sub"), str):
-            raise credentials_exception
+            CustomHTTPException.unauthorised(detail="Could not process the request: Token is not valid")
 
         return payload
 
     except jwt.PyJWTError:
-        raise credentials_exception
+        CustomHTTPException.unauthorised(detail="Could not process the request: Token is not valid")

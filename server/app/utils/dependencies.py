@@ -1,42 +1,35 @@
 import json
 from functools import wraps
-from typing import Any, Annotated
+from typing import Any, Annotated, Callable
 
 import jwt
-from fastapi import Security, HTTPException, Depends
+from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from starlette import status
 
 from server.app.controllers.user_controller import UserController
-from server.app.database.database import PostgresDatabase
 from server.app.utils.auth import verify_token
 from server.app.utils.redis_client import redis_client
+from server.app.utils.exceptions import CustomHTTPException
 
 
 security = HTTPBearer()
 
 
-def handle_jwt_errors(func):
+def handle_jwt_errors(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code=401, detail="Expired token")
-        except jwt.InvalidTokenError:
-            raise HTTPException(status_code=403, detail="Invalid token")
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except jwt.ExpiredSignatureError as e:
+            CustomHTTPException.unauthorised(detail=f"Signature expired: {repr(e)}")
+        except jwt.InvalidTokenError as e:
+            CustomHTTPException.forbidden(detail=f"Invalid token: {repr(e)}")
     return wrapper
 
 
 async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]) -> dict[str, Any] | None:
     if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header is missing",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        CustomHTTPException.unauthorised(detail="Authorization header is missing")
 
     try:
         token = credentials.credentials
@@ -44,20 +37,12 @@ async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, 
         user = UserController.get_user_by_token(token)
 
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or token invalid",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            CustomHTTPException.bad_request(detail="User not found")
 
         return user
 
     except jwt.PyJWTError as e:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        CustomHTTPException.unauthorised(detail="Authorization error: " + str(e))
 
 
 @handle_jwt_errors
@@ -68,12 +53,9 @@ def required_plans(allowed_plans: list[str]):
             plan_name = user["plan_name"]
 
             if not plan_name:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+                CustomHTTPException.not_found(detail="Plan not found")
             if plan_name not in allowed_plans:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access for current user denied"
-                )
+                CustomHTTPException.forbidden(detail="Access denied")
 
             return func(*args, user=user, **kwargs)
         return wrapper
@@ -87,18 +69,12 @@ def required_permissions(permissions: list[str]):
             plan_name = user["plan_name"]
 
             if not plan_name:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Plan not found"
-                )
+                CustomHTTPException.not_found(detail="Plan not found")
 
             user_permissions = set(json.loads(redis_client.hgetall(plan_name).get("permissions")))
 
             if not set(permissions).issubset(user_permissions):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access for current user denied"
-                )
+                CustomHTTPException.forbidden(detail="Permission denied")
 
             return func(*args, user=user, **kwargs)
         return wrapper

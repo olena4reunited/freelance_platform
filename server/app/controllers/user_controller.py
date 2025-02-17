@@ -13,10 +13,6 @@ from server.app.utils.auth import (
 )
 from server.app.utils.crypto import encrypt_data
 from server.app.database.database import PostgresDatabase
-from server.app.utils.config import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    REFRESH_TOKEN_EXPIRE_DAYS
-)
 
 
 class UserController:
@@ -105,8 +101,8 @@ class UserController:
             "plan_name": plan_name["name"],
         }
 
-        access_tkn = create_token(user_data_tokenize, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-        refresh_tkn = create_token(user_data_tokenize, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+        access_tkn = create_token(user_data_tokenize, timedelta(minutes=3000))
+        refresh_tkn = create_token(user_data_tokenize, timedelta(days=7))
 
         return {
             "access_token": access_tkn,

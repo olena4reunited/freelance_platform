@@ -1,6 +1,6 @@
 from typing import Any, Union
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from starlette import status
 
 from server.app.validators.payment_validators import PaymentValidator
@@ -14,12 +14,17 @@ from server.app.schemas.payment_schemas import (
     PaymentCreate,
     PaymentResponse, PaymentResponseExtended
 )
+from server.app.utils.exceptions import (
+    handle_db_errors,
+    CustomHTTPException
+)
 
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 @router.post("/add_payment", response_model=PaymentResponse)
+@handle_db_errors
 @required_plans(["customer", "performer"])
 @required_permissions(["create_payment", "read_own_payment_list", "read_own_payment_details"])
 def add_payment_details(
@@ -32,13 +37,11 @@ def add_payment_details(
             str(payment_data.payment)
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Payment could not be created: {repr(e)}")
 
 
 @router.get("/me/list", response_model=Union[list[PaymentResponse], PaymentResponse])
+@handle_db_errors
 @required_plans(["customer", "performer"])
 @required_permissions(["read_own_payment_list"])
 def get_payment_list(
@@ -47,13 +50,11 @@ def get_payment_list(
     try:
         return PaymentController.get_user_payments(user["id"])
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
 @router.get("/me/list/{payment_id}", response_model=PaymentResponse)
+@handle_db_errors
 @required_plans(["customer", "performer"])
 @required_permissions(["read_own_payment_list", "read_own_payment_details"])
 def get_payment_details(
@@ -66,13 +67,11 @@ def get_payment_details(
 
         return PaymentController.get_payment(payment_id)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
 @router.delete("/me/list/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@handle_db_errors
 @required_plans(["customer", "performer"])
 @required_permissions(["read_own_payment_details", "delete_own_payment"])
 def delete_payment(
@@ -84,14 +83,13 @@ def delete_payment(
         .validate_payment_ownership(user["id"])
 
         PaymentController.delete_payment(payment_id)
+        return
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
 @router.get("/list", response_model=Union[list[PaymentResponseExtended], PaymentResponseExtended])
+@handle_db_errors
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments"])
 def get_all_payments(
@@ -100,13 +98,11 @@ def get_all_payments(
     try:
         return PaymentController.get_all_users_payments()
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
 @router.get("/{user_id}/list", response_model=Union[list[PaymentResponse], PaymentResponse])
+@handle_db_errors
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments", "read_user_payments"])
 def get_user_payments(
@@ -116,13 +112,11 @@ def get_user_payments(
     try:
         return PaymentController.get_user_payments(user_id)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
 @router.get("/{user_id}/list/{payment_id}", response_model=PaymentResponseExtended)
+@handle_db_errors
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details"])
 def get_user_payment_details(
@@ -133,13 +127,11 @@ def get_user_payment_details(
     try:
         return PaymentController.get_user_payment_details(user_id, payment_id)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
 @router.delete("/{user_id}/list/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@handle_db_errors
 @required_plans(["admin"])
 @required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details", "delete_user_payment"])
 def delete_user_payment(
@@ -152,8 +144,6 @@ def delete_user_payment(
         .validate_payment_ownership(user_id)
 
         PaymentController.delete_payment(payment_id)
+        return
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")

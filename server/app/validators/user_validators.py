@@ -1,11 +1,9 @@
 import re
 from enum import Enum
 
-from fastapi import HTTPException
-from starlette import status
-
 from server.app.models.user_model import User
 from server.app.utils.auth import verify_password
+from server.app.utils.exceptions import CustomHTTPException
 
 
 class MethodEnum(Enum):
@@ -32,45 +30,45 @@ class UserValidator:
 
     def validate_username(self):
         if not self.username and self.method:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username is required")
+            CustomHTTPException.bad_request(detail="Could not process request: Username is required")
         if User.get_user_by_field("username", self.username):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this username is already registered")
+            CustomHTTPException.bad_request(detail="Could not process request: This username is already taken")
 
         return self
 
     def validate_email(self):
         if not self.email and self.method:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
+            CustomHTTPException.bad_request(detail="Could not process request: Email is required")
         if not self.email and not self.method:
             return self
         if User.get_user_by_field("email", self.email):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is already registered")
+            CustomHTTPException.bad_request(detail="Could not process request: This email is already registered")
 
-        email_regex = r"^[a-zA-Z_\.a-zA-Z]+@[a-zA-Z_]+\.[a-zA-Z]{2,6}"
+        email_regex = r"^[a-zA-Z\d?+\.a-zA-Z\d?+]+@[a-zA-Z]+\.[a-zA-Z]{2,6}"
 
         if not re.match(email_regex, self.email):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email")
+            CustomHTTPException.bad_request(detail="Could not process request: Invalid email format")
 
         return self
 
     def validate_password(self):
         if not self.password and self.method:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password is required")
+            CustomHTTPException.bad_request(detail="Could not process request: Password is required")
         if not self.password and not self.method:
             return self
         if not (self.password == self.password_repeat):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords don't match")
+            CustomHTTPException.bad_request(detail="Could not process request: Passwords do not match")
 
         if len(self.password) < 8:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters long")
+            CustomHTTPException.bad_request(detail="Password must be at least 8 characters long")
         if not re.search(r"[A-Z]", self.password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must contain at least one uppercase letter")
+            CustomHTTPException.bad_request(detail="Password must contain at least one uppercase letter")
         if not re.search(r"[a-z]", self.password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must contain at least one lowercase letter")
+            CustomHTTPException.bad_request(detail="Password must contain at least one lowercase letter")
         if not re.search(r"\d", self.password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must contain at least one digit")
+            CustomHTTPException.bad_request(detail="Password must contain at least one digit")
         if not re.search(r"[!-/:-@[-`{-~]", self.password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must contain at least one special character")
+            CustomHTTPException.bad_request(detail="Password must contain at least one special character")
 
         return self
 
@@ -78,13 +76,12 @@ class UserValidator:
         if not self.phone_number:
             return self
         if self.phone_number and User.get_user_by_field("phone_number", self.phone_number):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is already registered")
-
+            CustomHTTPException.bad_request(detail="Could not process request: Phone number is already taken")
 
         phone_number_regex = r"^\+?\d{10,12}$"
 
         if not re.match(phone_number_regex, self.phone_number):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid phone number")
+            CustomHTTPException.bad_request(detail="Could not process request: Invalid phone number")
 
         return self
 
@@ -109,9 +106,8 @@ class UserTokenValidator:
             user = User.get_user_by_field("email", self.email)
 
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
+            CustomHTTPException.not_found(detail="Could not process request: User does not exist")
         if not verify_password(self.password, user["password"]):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid password")
+            CustomHTTPException.bad_request(detail="Could not process request: Password does not match")
 
         return self

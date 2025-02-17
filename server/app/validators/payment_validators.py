@@ -1,7 +1,5 @@
-from fastapi import HTTPException
-from starlette import status
-
 from server.app.models.payment_model import Payment
+from server.app.utils.exceptions import CustomHTTPException
 
 
 class PaymentValidator:
@@ -15,9 +13,7 @@ class PaymentValidator:
 
     def validate_payment_ownership(self, user_id: int):
         if not self.payment_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment id is required")
-
-        if not Payment.get_record_by_id(self.payment_id)["user_id"] == user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have permission to access this payment")
-
+            CustomHTTPException.bad_request(detail="Could not process request: Payment ID is required")
+        if Payment.get_record_by_id(self.payment_id)["user_id"] != user_id:
+            CustomHTTPException.forbidden(detail="Request is forbidden: You don't have permission to access this payment")
         return self
