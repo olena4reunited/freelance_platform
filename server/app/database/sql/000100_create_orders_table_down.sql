@@ -1,5 +1,7 @@
 BEGIN;
 
-DROP INDEX unique_main_order;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS images;
+DROP TABLE IF EXISTS orders_images;
 
 COMMIT;
