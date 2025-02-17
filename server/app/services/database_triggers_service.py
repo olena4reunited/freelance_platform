@@ -6,14 +6,14 @@ def create_trigger_delete_blocked_records():
         db.execute_query(
             """
                 CREATE OR REPLACE FUNCTION delete_blocked_records()
-                    RETURNS TRIGGER AS $$
-                        BEGIN
-                            DELETE FROM orders
-                            WHERE blocked_until IS NULL AND is_blocked = TRUE;
-                    
-                            RETURN NULL;
-                        END;
-                    $$ LANGUAGE plpgsql;
+                RETURNS TRIGGER AS $$
+                    BEGIN
+                        DELETE FROM orders
+                        WHERE blocked_until IS NULL AND is_blocked = TRUE;
+                
+                        RETURN NULL;
+                    END;
+                $$ LANGUAGE plpgsql;
             """
         )
 
