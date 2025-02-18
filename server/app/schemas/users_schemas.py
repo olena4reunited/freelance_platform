@@ -51,3 +51,16 @@ class UserCreateToken(BaseModel):
     username: str | None = None
     email: str | None = None
     password: str
+
+
+class UserPerformerResponse(BaseModel):
+    id: int
+    order_id: int
+    username: str
+    first_name: str
+    last_name: str
+    photo_link: str | None
+
+
+class UserCustomerResponse(UserPerformerResponse):
+    pass
