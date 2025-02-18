@@ -45,7 +45,3 @@ class PostgresDatabase:
             cursor.execute(query, params)
 
             return cursor.fetchall() if is_all else cursor.fetchone()
-
-
-
-

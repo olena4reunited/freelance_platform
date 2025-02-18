@@ -7,8 +7,8 @@ from server.app.utils.crypto import encrypt_data, get_masked_payment
 
 class PaymentController:
     @staticmethod
-    def create_payment(user_id: int, payment: str) -> dict[str, str]:
-        encrypted_payment = encrypt_data(payment)
+    def create_payment(user_id: int, payment_data: str) -> dict[str, Any] | None:
+        encrypted_payment = encrypt_data(payment_data)
 
         with PostgresDatabase(on_commit=True) as db:
             payment = db.fetch(
