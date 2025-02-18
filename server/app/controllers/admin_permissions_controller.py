@@ -117,4 +117,3 @@ class AdminPermissionsController:
     @staticmethod
     def delete_permission(permission_id: int) -> None:
         Permission.delete_record_by_id(permission_id)
-
