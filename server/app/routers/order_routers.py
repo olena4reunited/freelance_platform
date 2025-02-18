@@ -22,6 +22,7 @@ from server.app.validators.order_validators import (
 )
 from server.app.controllers.order_customer_controller import OrderCustomerController
 from server.app.controllers.order_performer_controller import OrderPerformerController
+from server.app.controllers.order_admin_controller import OrderAdminController
 from server.app.utils.exceptions import (
     handle_db_errors,
     CustomHTTPException
@@ -203,5 +204,18 @@ def get_all_assigned_orders_customers(
         .validate_performer()
 
         return OrderPerformerController.get_all_performer_customers(performer_id=user.get("id"))
+    except Exception as e:
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
+
+
+@router.get("/admin/orders", response_model=Union[list[OrderListResponse], OrderListResponse])
+@handle_db_errors
+@required_plans(["admin", "moderator"])
+@required_permissions(["read_all_orders"])
+def get_all_orders(
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return OrderAdminController.get_all_orders()
     except Exception as e:
         CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
