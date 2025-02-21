@@ -5,6 +5,9 @@ from starlette import status
 
 from server.app.controllers.admin_plans_controller import AdminPlansController
 from server.app.controllers.admin_permissions_controller import AdminPermissionsController
+from server.app.controllers.admin_user_controller import AdminUserController
+from server.app.schemas.users_schemas import UserResponseExtended
+from server.app.schemas.admin_schemas import BlockRequest
 from server.app.utils.dependencies import (
     get_current_user,
     required_plans,
@@ -178,5 +181,23 @@ def delete_plan(
     try:
         AdminPlansController.delete_plan_by_id(plan_id)
         return
+    except Exception as e:
+        CustomHTTPException.bad_request(detail=f"Bad request: {repr(e)}")
+
+
+@router.patch("/users/{user_id}", response_model=UserResponseExtended)
+@handle_db_errors
+@required_plans(["admin"])
+@required_permissions(["block_user"])
+def block_user(
+        user_id: int,
+        user_block_request: BlockRequest,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return AdminUserController.block_user_by_id(
+            user_id=user_id,
+            block_timestamp=user_block_request.block_timestamp
+        )
     except Exception as e:
         CustomHTTPException.bad_request(detail=f"Bad request: {repr(e)}")
