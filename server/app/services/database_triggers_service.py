@@ -8,10 +8,10 @@ def create_routines():
                 CREATE OR REPLACE FUNCTION set_blocked_timestamp_orders()
                 RETURNS TRIGGER AS $$
                     BEGIN
-                        UPDATE orders SET blocked_until = CURRENT_TIMESTAMP + INTERVAL '30 days'
-                        WHERE blocked_until IS NULL AND is_blocked = TRUE;
-                
-                        RETURN NULL;
+                        IF NEW.blocked_until is NULL AND NEW.is_blocked = TRUE THEN
+                            NEW.blocked_until = CURRENT_TIMESTAMP + INTERVAL '30 days';
+                        END IF;
+                        RETURN NEW;
                     END;
                 $$ LANGUAGE plpgsql;
             """
@@ -22,10 +22,10 @@ def create_routines():
                 CREATE OR REPLACE FUNCTION set_blocked_timestamp_users()
                 RETURNS TRIGGER AS $$
                     BEGIN
-                        UPDATE users SET block_expired = CURRENT_TIMESTAMP + INTERVAL '30 days' 
-                        WHERE block_expired IS NULL AND is_blocked = TRUE;
-
-                        RETURN NULL;
+                        IF NEW.block_expired is NULL AND NEW.is_blocked = TRUE THEN
+                            NEW.block_expired = CURRENT_TIMESTAMP + INTERVAL '30 days';
+                        END IF;
+                        RETURN NEW;
                     END;
                 $$ LANGUAGE plpgsql;
             """
