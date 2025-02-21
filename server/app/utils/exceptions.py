@@ -54,9 +54,9 @@ def handle_db_errors(func: Callable) -> Callable:
         try:
             return func(*args, **kwargs)
         except IntegrityError as e:
-            CustomHTTPException.bad_request(detail=f"Database integrity error: {repr(e)}")
+            CustomHTTPException.bad_request(detail=f"Database integrity error: {e.pgerror}")
         except (DatabaseError, OperationalError) as e:
-            CustomHTTPException.internal_server_error(detail=f"Internal server error: {repr(e)}")
+            CustomHTTPException.internal_server_error(detail=f"Internal server error: {e.pgerror}")
         except Exception as e:
-            CustomHTTPException.bad_request(detail=f"Bad request: {repr(e)}")
+            raise e
     return wrapper
