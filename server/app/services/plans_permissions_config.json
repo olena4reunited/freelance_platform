@@ -102,5 +102,65 @@
   {
     "name": "delete_plan",
     "plans": ["admin"]
+  },
+  {
+    "name": "block_user",
+    "plans": ["admin"]
+  },
+  {
+    "name": "read_own_orders",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_own_orders_performers",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_own_order_details",
+    "plans": ["customer"]
+  },
+  {
+    "name": "create_order",
+    "plans": ["customer"]
+  },
+  {
+    "name": "update_own_order",
+    "plans": ["customer"]
+  },
+  {
+    "name": "delete_own_order",
+    "plans": ["customer"]
+  },
+  {
+    "name": "read_unassigned_orders",
+    "plans": ["performer"]
+  },
+  {
+    "name": "assign_themself_to_order",
+    "plans": ["performer"]
+  },
+  {
+    "name": "read_own_orders_customers",
+    "plans": ["performer"]
+  },
+  {
+    "name": "read_all_orders",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "read_all_orders_details",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "update_all_orders_details",
+    "plans": ["admin"]
+  },
+  {
+    "name": "delete_all_orders",
+    "plans": ["admin"]
+  },
+  {
+    "name": "block_order",
+    "plans": ["admin"]
   }
 ]
