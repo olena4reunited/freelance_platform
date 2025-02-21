@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -8,21 +10,15 @@ class OrderCreate(BaseModel):
 
 
 class OrderUpdate(OrderCreate):
-    pass
-
-
-class OrderResponse(BaseModel):
-    id: int
-    name: str
-    description: str
-    customer_id: int
-    performer_id: int | None = None
+    name: str | None = None
+    description: str | None = None
+    images_links: list[str] | None = None
 
 
 class OrderListResponse(BaseModel):
     id: int
     name: str
-    description: str
+    description: str | None
     customer_id: int
     performer_id: int | None = None
     image_link: str | None
@@ -31,10 +27,15 @@ class OrderListResponse(BaseModel):
 class OrderSingleResponse(BaseModel):
     id: int
     name: str
-    description: str
+    description: str | None
     customer_id: int
     performer_id: int | None = None
-    images_links: list[str] | None
+    images_links: list[str] | None = None
+
+
+class OrderSingleResponseExtended(OrderSingleResponse):
+    blocked_until: datetime
+    is_blocked: bool
 
 
 class OrderListPerformerResponse(BaseModel):
@@ -46,3 +47,12 @@ class OrderListPerformerResponse(BaseModel):
 
 class OrderPerformerAssignedResponse(OrderListPerformerResponse):
     performer_id: int
+
+
+class OrderAdminUpdate(BaseModel):
+    id: int | None = None
+    name: str | None = None
+    description: str | None = None
+    customer_id: int | None = None
+    performer_id: int | None = None
+    images_links: list[str] | None = None

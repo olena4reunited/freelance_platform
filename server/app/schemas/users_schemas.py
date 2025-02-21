@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, condecimal, conint
@@ -45,6 +46,13 @@ class UserResponse(BaseModel):
     balance: condecimal(max_digits=10, decimal_places=2) | None
     rating: conint(ge=0, le=5) | None
     plan_name: str
+
+
+class UserResponseExtended(UserResponse):
+    is_verified: bool
+    block_expired: datetime
+    delete_date: datetime | None
+    is_blocked: bool
 
 
 class UserCreateToken(BaseModel):
