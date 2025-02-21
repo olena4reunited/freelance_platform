@@ -14,7 +14,7 @@ class OrderPerformerController:
                     WITH selected_orders AS (
                         SELECT id, name, description, customer_id
                         FROM orders
-                        WHERE is_blocked != TRUE AND performer_id IS NULL
+                        WHERE is_blocked IS NOT TRUE AND performer_id IS NULL
                     )
                     SELECT id, name, description, customer_id
                     FROM selected_orders
@@ -45,7 +45,7 @@ class OrderPerformerController:
                 """
                     SELECT id, name, description, customer_id, performer_id
                     FROM orders
-                    WHERE is_blocked != TRUE AND performer_id = %s
+                    WHERE is_blocked IS NOT TRUE AND performer_id = %s
                 """,
                 (performer_id,),
                 is_all=True

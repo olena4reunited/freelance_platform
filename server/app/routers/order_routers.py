@@ -6,16 +6,18 @@ from starlette import status
 from server.app.schemas.order_schemas import (
     OrderCreate,
     OrderUpdate,
-    OrderResponse,
     OrderListResponse,
     OrderSingleResponse,
     OrderListPerformerResponse,
-    OrderPerformerAssignedResponse
+    OrderPerformerAssignedResponse,
+    OrderAdminUpdate,
+    OrderSingleResponseExtended
 )
 from server.app.schemas.users_schemas import (
     UserPerformerResponse,
     UserCustomerResponse
 )
+from server.app.schemas.admin_schemas import BlockRequest
 from server.app.validators.order_validators import (
     OrderCustomerValidator,
     OrderPerformerValidator
@@ -83,7 +85,7 @@ def get_order_list(
         CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
-@router.post("/customer/me", response_model=OrderResponse)
+@router.post("/customer/me", response_model=OrderSingleResponse)
 @handle_db_errors
 @required_plans(["customer"])
 @required_permissions(["create_order"])
@@ -136,11 +138,12 @@ def delete_order(
         .validate_order()
 
         OrderCustomerController.delete_order(order_id)
+        return
     except Exception as e:
         CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
-@router.get("/performers/list", response_model=Union[list[OrderListPerformerResponse], OrderListPerformerResponse])
+@router.get("/performer/list", response_model=Union[list[OrderListPerformerResponse], OrderListPerformerResponse])
 @handle_db_errors
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders"])
@@ -158,7 +161,7 @@ def get_all_unassigned_orders(
         CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
-@router.post("/performers/list/{order_id}", response_model=OrderPerformerAssignedResponse)
+@router.post("/performer/list/{order_id}", response_model=OrderPerformerAssignedResponse)
 @handle_db_errors
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders", "assign_themself_to_order"])
@@ -176,7 +179,7 @@ def assign_themself_to_order(
         CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
-@router.get("/performers/me/list", response_model=Union[list[OrderPerformerAssignedResponse], OrderPerformerAssignedResponse])
+@router.get("/performer/me/list", response_model=Union[list[OrderPerformerAssignedResponse], OrderPerformerAssignedResponse])
 @handle_db_errors
 @required_plans(["performer"])
 @required_permissions(["read_own_orders"])
@@ -192,7 +195,7 @@ def get_all_own_orders(
         CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
 
 
-@router.get("/performers/me/customers", response_model=Union[list[UserCustomerResponse], UserCustomerResponse])
+@router.get("/performer/me/customers", response_model=Union[list[UserCustomerResponse], UserCustomerResponse])
 @handle_db_errors
 @required_plans(["performer"])
 @required_permissions(["read_own_orders", "read_own_orders_customers"])
@@ -217,5 +220,67 @@ def get_all_orders(
 ):
     try:
         return OrderAdminController.get_all_orders()
+    except Exception as e:
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
+
+
+@router.get("/admin/orders/{order_id}", response_model=OrderSingleResponse)
+@handle_db_errors
+@required_plans(["admin", "moderator"])
+@required_permissions(["read_all_orders", "read_all_orders_details"])
+def get_single_order(
+        order_id: int,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return OrderAdminController.get_order_by_id(order_id=order_id)
+    except Exception as e:
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
+
+
+@router.patch("/admin/orders/{order_id}", response_model=OrderSingleResponse)
+@handle_db_errors
+@required_plans(["admin"])
+@required_permissions(["read_all_orders_details", "update_all_orders_details"])
+def update_order(
+        order_id: int,
+        updated_order_data: OrderAdminUpdate,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return OrderAdminController.update_order_by_id(order_id=order_id, order_data=updated_order_data.model_dump())
+    except Exception as e:
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
+
+
+@router.delete("/admin/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+@handle_db_errors
+@required_plans(["admin"])
+@required_permissions(["read_all_orders_details", "update_all_orders_details", "delete_all_orders"])
+def delete_order(
+        order_id: int,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        OrderAdminController.delete_order_by_id(order_id=order_id)
+        return
+    except Exception as e:
+        CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
+
+
+@router.put("/admin/orders/{order_id}", response_model=OrderSingleResponseExtended)
+@handle_db_errors
+@required_plans(["admin"])
+@required_permissions(["read_all_orders_details", "update_all_orders_details", "block_order"])
+def block_order(
+        order_id: int,
+        order_block_request: BlockRequest,
+        user: dict[str, Any] = Depends(get_current_user)
+):
+    try:
+        return OrderAdminController.block_order_by_id(
+            order_id=order_id,
+            block_timestamp=order_block_request.block_timestamp,
+        )
     except Exception as e:
         CustomHTTPException.bad_request(detail=f"Could not process request: {repr(e)}")
