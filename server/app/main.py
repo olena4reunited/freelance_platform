@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.exceptions import ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from server.app.database.database import PostgresDatabase
@@ -11,6 +12,11 @@ from server.app.routers.payment_routers import router as payment_router
 from server.app.routers.order_routers import router as order_router
 from server.app.utils.redis_client import redis_client
 from server.app.services.cache_permissions_service import load_permissions
+from server.app.utils.exceptions import (
+    CustomHTTPException,
+    custom_exception_handler,
+    response_validation_exception_handler
+)
 
 
 @asynccontextmanager
@@ -47,6 +53,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.add_exception_handler(CustomHTTPException, custom_exception_handler)
+app.add_exception_handler(ResponseValidationError, response_validation_exception_handler)
 
 
 app.include_router(user_router)

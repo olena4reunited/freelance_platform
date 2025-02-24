@@ -1,9 +1,12 @@
-from typing import Callable
+from typing import Callable, Any
 from functools import wraps
 
 from fastapi import HTTPException
-from starlette import status
+from fastapi.exceptions import ResponseValidationError
 from psycopg2.errors import DatabaseError, OperationalError, IntegrityError
+from starlette import status
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 
 class CustomHTTPException(HTTPException):
@@ -11,52 +14,72 @@ class CustomHTTPException(HTTPException):
             self,
             status_code: int,
             detail: str | None = None,
-            headers: dict[str, str] | None = None
+            extra: dict | None = None
     ) -> None:
-        super().__init__(
-            status_code=status_code,
-            detail=detail,
-            headers=headers
-        )
+        super().__init__(status_code=status_code, detail=detail)
+        self.extra = extra
+
+    def to_dict(self):
+        return {
+            "status_code": self.status_code,
+            "detail": self.detail,
+            "extra": self.extra,
+        }
 
     @classmethod
-    def bad_request(cls, detail: str = "Bad request") -> None:
-        raise cls(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+    def raise_exception(
+            cls,
+            status_code: int,
+            detail: str | None = None,
+            extra: dict | None = None
+    ) -> JSONResponse:
+        raise cls(status_code=status_code, detail=detail, extra=extra)
 
     @classmethod
-    def unauthorised(cls, detail: str = "Unauthorised") -> None:
-        raise cls(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+    def catcher(cls, func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> JSONResponse:
+            try:
+                return func(*args, **kwargs)
+            except IntegrityError as e:
+                cls.raise_exception(
+                    500,
+                    "Database integrity error",
+                    extra={"pgerror": str(e)}
+                )
+            except (DatabaseError, OperationalError) as e:
+                cls.raise_exception(
+                    500,
+                    "Database error",
+                    extra={"pgerror": str(e)}
+                )
+            except ResponseValidationError as e:
+                cls.raise_exception(
+                    501,
+                    "Service Not implemented",
+                    extra={"error": str(e)}
+                )
+            except HTTPException as e:
+                raise e
+            except Exception as e:
+                cls.raise_exception(
+                    501,
+                    "Service Not implemented",
+                    extra={"error": str(e)}
+                )
+        return wrapper
 
-    @classmethod
-    def forbidden(cls, detail: str = "Forbidden") -> None:
-        raise cls(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
-    @classmethod
-    def not_found(cls, detail: str = "Not found") -> None:
-        raise cls(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
-
-    @classmethod
-    def internal_server_error(cls, detail: str = "Internal server error") -> None:
-        raise cls(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
-
-    @classmethod
-    def service_unavailable(cls, detail: str = "Service unavailable") -> None:
-        raise cls(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
-
-    @classmethod
-    def gateway_timeout(cls, detail: str = "Gateway timeout") -> None:
-        raise cls(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=detail)
+async def custom_exception_handler(request: Request, exc: CustomHTTPException) -> JSONResponse | None:
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
 
-def handle_db_errors(func: Callable) -> Callable:
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except IntegrityError as e:
-            CustomHTTPException.bad_request(detail=f"Database integrity error: {e.pgerror}")
-        except (DatabaseError, OperationalError) as e:
-            CustomHTTPException.internal_server_error(detail=f"Internal server error: {e.pgerror}")
-        except Exception as e:
-            raise e
-    return wrapper
+async def response_validation_exception_handler(request: Request, exc: ResponseValidationError):
+    return JSONResponse(
+        status_code=501,
+        content={
+            "status_code": 501,
+            "detail": "Service not implemented or do not exist anymore",
+            "extra": {"request": str(request.path_params)},
+        },
+    )

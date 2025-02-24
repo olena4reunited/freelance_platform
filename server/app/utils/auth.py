@@ -70,9 +70,15 @@ def verify_token(token: str) -> dict[str, Any] | None:
         payload = jwt.decode(token, public_key, algorithms=["RS256"])
 
         if not payload.get("sub") or not isinstance(payload.get("sub"), str):
-            CustomHTTPException.unauthorised(detail="Could not process the request: Token is not valid")
+            CustomHTTPException.raise_exception(
+                status_code=401,
+                detail="Invalid token",
+            )
 
         return payload
 
     except jwt.PyJWTError:
-        CustomHTTPException.unauthorised(detail="Could not process the request: Token is not valid")
+        CustomHTTPException.raise_exception(
+            status_code=401,
+            detail="Invalid token",
+        )

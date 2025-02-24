@@ -21,29 +21,42 @@ def handle_jwt_errors(func: Callable) -> Callable:
         try:
             return func(*args, **kwargs)
         except jwt.ExpiredSignatureError as e:
-            CustomHTTPException.unauthorised(detail=f"Signature expired: {repr(e)}")
+            CustomHTTPException.raise_exception(
+                status_code=401,
+                detail="Signature expired. Please login again."
+            )
         except jwt.InvalidTokenError as e:
-            CustomHTTPException.forbidden(detail=f"Invalid token: {repr(e)}")
+            CustomHTTPException.raise_exception(
+                status_code=403,
+                detail="Invalid token. Could not process request."
+            )
     return wrapper
 
 
 async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]) -> dict[str, Any] | None:
     if credentials is None:
-        CustomHTTPException.unauthorised(detail="Authorization header is missing")
-
+        CustomHTTPException.raise_exception(
+            status_code=401,
+            detail="Authentication credentials were not provided"
+        )
     try:
         token = credentials.credentials
-        payload = verify_token(token)
+        verify_token(token)
         user = UserController.get_user_by_token(token)
 
         if user is None:
-            CustomHTTPException.bad_request(detail="User not found")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="USer does not exist. Provide valid credentials."
+            )
 
         return user
 
     except jwt.PyJWTError as e:
-        CustomHTTPException.unauthorised(detail="Authorization error: " + str(e))
-
+        CustomHTTPException.raise_exception(
+            status_code=401,
+            detail="Could not validate credentials."
+        )
 
 @handle_jwt_errors
 def required_plans(allowed_plans: list[str]):
@@ -53,9 +66,16 @@ def required_plans(allowed_plans: list[str]):
             plan_name = user["plan_name"]
 
             if not plan_name:
-                CustomHTTPException.not_found(detail="Plan not found")
+                CustomHTTPException.raise_exception(
+                    status_code=400,
+                    detail="No plan name provided or provided plan does not exist.",
+                    extra={"plan_name": plan_name}
+                )
             if plan_name not in allowed_plans:
-                CustomHTTPException.forbidden(detail="Access denied")
+                CustomHTTPException.raise_exception(
+                    status_code=403,
+                    detail="Plan '{}' is not allowed to get access to resource".format(plan_name)
+                )
 
             return func(*args, user=user, **kwargs)
         return wrapper
@@ -69,12 +89,19 @@ def required_permissions(permissions: list[str]):
             plan_name = user["plan_name"]
 
             if not plan_name:
-                CustomHTTPException.not_found(detail="Plan not found")
+                CustomHTTPException.raise_exception(
+                    status_code=400,
+                    detail="No plan name provided or provided plan does not exist.",
+                    extra={"plan_name": plan_name}
+                )
 
             user_permissions = set(json.loads(redis_client.hgetall(plan_name).get("permissions")))
 
             if not set(permissions).issubset(user_permissions):
-                CustomHTTPException.forbidden(detail="Permission denied")
+                CustomHTTPException.raise_exception(
+                    status_code=403,
+                    detail="User does not have permission to access resource"
+                )
 
             return func(*args, user=user, **kwargs)
         return wrapper

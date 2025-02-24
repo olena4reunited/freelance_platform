@@ -30,58 +30,98 @@ class UserValidator:
 
     def validate_username(self):
         if not self.username and self.method:
-            CustomHTTPException.bad_request(detail="Could not process request: Username is required")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Username cannot be empty"
+            )
         if User.get_user_by_field("username", self.username):
-            CustomHTTPException.bad_request(detail="Could not process request: This username is already taken")
-
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Username already exists. Username must be unique"
+            )
         return self
 
     def validate_email(self):
         if not self.email and self.method:
-            CustomHTTPException.bad_request(detail="Could not process request: Email is required")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Email cannot be empty"
+            )
         if not self.email and not self.method:
             return self
         if User.get_user_by_field("email", self.email):
-            CustomHTTPException.bad_request(detail="Could not process request: This email is already registered")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Email already registered"
+            )
 
         email_regex = r"^[a-zA-Z\d?+\.a-zA-Z\d?+]+@[a-zA-Z]+\.[a-zA-Z]{2,6}"
 
         if not re.match(email_regex, self.email):
-            CustomHTTPException.bad_request(detail="Could not process request: Invalid email format")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Could not process email address validation. Enter a valid email address"
+            )
 
         return self
 
     def validate_password(self):
         if not self.password and self.method:
-            CustomHTTPException.bad_request(detail="Could not process request: Password is required")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password is required"
+            )
         if not self.password and not self.method:
             return self
         if not (self.password == self.password_repeat):
-            CustomHTTPException.bad_request(detail="Could not process request: Passwords do not match")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Passwords don't match"
+            )
 
         if len(self.password) < 8:
-            CustomHTTPException.bad_request(detail="Password must be at least 8 characters long")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password must be at least 8 characters long"
+            )
         if not re.search(r"[A-Z]", self.password):
-            CustomHTTPException.bad_request(detail="Password must contain at least one uppercase letter")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password must contain at least one uppercase letter"
+            )
         if not re.search(r"[a-z]", self.password):
-            CustomHTTPException.bad_request(detail="Password must contain at least one lowercase letter")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password must contain at least one lowercase letter"
+            )
         if not re.search(r"\d", self.password):
-            CustomHTTPException.bad_request(detail="Password must contain at least one digit")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password must contain at least one digit"
+            )
         if not re.search(r"[!-/:-@[-`{-~]", self.password):
-            CustomHTTPException.bad_request(detail="Password must contain at least one special character")
-
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password must contain at least one special character"
+            )
         return self
 
     def validate_phone_number(self):
         if not self.phone_number:
             return self
         if self.phone_number and User.get_user_by_field("phone_number", self.phone_number):
-            CustomHTTPException.bad_request(detail="Could not process request: Phone number is already taken")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Phone number already registered"
+            )
 
         phone_number_regex = r"^\+?\d{10,12}$"
 
         if not re.match(phone_number_regex, self.phone_number):
-            CustomHTTPException.bad_request(detail="Could not process request: Invalid phone number")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Could not process phone number validation. Enter a valid phone number"
+            )
 
         return self
 
@@ -106,8 +146,15 @@ class UserTokenValidator:
             user = User.get_user_by_field("email", self.email)
 
         if not user:
-            CustomHTTPException.not_found(detail="Could not process request: User does not exist")
+            CustomHTTPException.raise_exception(
+                status_code=404,
+                detail="User does not exist",
+                extra={"username": self.username, "email": self.email}
+            )
         if not verify_password(self.password, user["password"]):
-            CustomHTTPException.bad_request(detail="Could not process request: Password does not match")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password does not match"
+            )
 
         return self

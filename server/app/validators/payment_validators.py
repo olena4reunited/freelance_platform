@@ -13,7 +13,14 @@ class PaymentValidator:
 
     def validate_payment_ownership(self, user_id: int):
         if not self.payment_id:
-            CustomHTTPException.bad_request(detail="Could not process request: Payment ID is required")
+            CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Payment ID not provided"
+            )
         if Payment.get_record_by_id(self.payment_id)["user_id"] != user_id:
-            CustomHTTPException.forbidden(detail="Request is forbidden: You don't have permission to access this payment")
+            CustomHTTPException.raise_exception(
+                status_code=403,
+                detail="Payment is not owned by this user",
+                extra={"user_id": user_id}
+            )
         return self
