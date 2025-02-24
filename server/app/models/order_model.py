@@ -56,19 +56,20 @@ class Order(BaseModel):
                 )
 
 
-            return db.fetch(
-                """
-                    WITH selected_images AS (
-                        SELECT oi.order_id AS order_id, COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
-                        FROM orders_images oi 
-                        LEFT JOIN images i ON oi.image_id = i.id 
-                        GROUP BY oi.order_id
-                    )
-                    SELECT o.id AS id, name, description, customer_id, performer_id, COALESCE(si.images_links, '{}') AS images_links
-                    FROM orders o
-                    LEFT JOIN selected_images si ON o.id = si.order_id
-                    WHERE o.id = %s;
-                """,
-                (order_id,)
-            )
+                cursor.execute(
+                    """
+                        WITH selected_images AS (
+                            SELECT oi.order_id AS order_id, COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
+                            FROM orders_images oi 
+                            LEFT JOIN images i ON oi.image_id = i.id 
+                            GROUP BY oi.order_id
+                        )
+                        SELECT o.id AS id, name, description, customer_id, performer_id, COALESCE(si.images_links, '{}') AS images_links
+                        FROM orders o
+                        LEFT JOIN selected_images si ON o.id = si.order_id
+                        WHERE o.id = %s;
+                    """,
+                    (order_id,)
+                )
 
+                return cursor.fetchone()
