@@ -77,7 +77,7 @@ def verify_token(token: str) -> dict[str, Any] | None:
 
         return payload
 
-    except jwt.PyJWTError:
+    except (jwt.PyJWTError, jwt.ExpiredSignatureError) as e:
         CustomHTTPException.raise_exception(
             status_code=401,
             detail="Invalid token",

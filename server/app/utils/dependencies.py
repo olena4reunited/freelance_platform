@@ -47,7 +47,7 @@ async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, 
         if user is None:
             CustomHTTPException.raise_exception(
                 status_code=400,
-                detail="USer does not exist. Provide valid credentials."
+                detail="User does not exist. Provide valid credentials."
             )
 
         return user
