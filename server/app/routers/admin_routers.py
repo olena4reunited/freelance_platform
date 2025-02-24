@@ -83,7 +83,7 @@ def update_permission(
     return AdminPermissionsController.update_permission(permission_id, permission_data.model_dump())
 
 
-@router.delete("/permissions/{permission_id}", status_code=204)
+@router.delete("/permissions/{permission_id}", response_model=list[PermissionResponse])
 @CustomHTTPException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_permission_details", "update_permission_details", "delete_permission"])
@@ -92,7 +92,7 @@ def delete_permission(
         user: dict[str, Any] = Depends(get_current_user)
 ):
     AdminPermissionsController.delete_permission(permission_id)
-    return
+    return AdminPermissionsController.get_all_permissions()
 
 
 @router.get("/plans", response_model=Union[list[PlanResponse], PlanResponse])
@@ -139,7 +139,7 @@ def get_all_plans(
     return AdminPlansController.update_plan_by_id(plan_id, plan_data.model_dump())
 
 
-@router.delete("/plans/{plan_id}", status_code=204)
+@router.delete("/plans/{plan_id}", response_model=Union[list[PlanResponse], PlanResponse])
 @CustomHTTPException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_all_permissions", "read_plan_details", "delete_plan"])
@@ -148,7 +148,7 @@ def delete_plan(
         user: dict[str, Any] = Depends(get_current_user)
 ):
     AdminPlansController.delete_plan_by_id(plan_id)
-    return
+    return AdminPlansController.get_all_plans()
 
 
 @router.patch("/users/{user_id}", response_model=UserResponseExtended)
