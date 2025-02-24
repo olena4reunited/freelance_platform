@@ -4,7 +4,6 @@ from functools import wraps
 from fastapi import HTTPException
 from fastapi.exceptions import ResponseValidationError
 from psycopg2.errors import DatabaseError, OperationalError, IntegrityError
-from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 

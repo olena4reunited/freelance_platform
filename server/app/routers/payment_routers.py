@@ -1,7 +1,6 @@
 from typing import Any, Union
 
 from fastapi import APIRouter, Depends
-from starlette import status
 
 from server.app.validators.payment_validators import PaymentValidator
 from server.app.controllers.payment_controller import PaymentController
@@ -58,7 +57,7 @@ def get_payment_details(
     return PaymentController.get_payment(payment_id)
 
 
-@router.delete("/me/list/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me/list/{payment_id}", status_code=204)
 @CustomHTTPException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["read_own_payment_details", "delete_own_payment"])
@@ -106,7 +105,7 @@ def get_user_payment_details(
     return PaymentController.get_user_payment_details(user_id, payment_id)
 
 
-@router.delete("/{user_id}/list/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{user_id}/list/{payment_id}", status_code=204)
 @CustomHTTPException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details", "delete_user_payment"])

@@ -1,7 +1,6 @@
 from typing import Any, Union
 
 from fastapi import APIRouter, Depends
-from starlette import status
 
 from server.app.controllers.admin_plans_controller import AdminPlansController
 from server.app.controllers.admin_permissions_controller import AdminPermissionsController
@@ -84,7 +83,7 @@ def update_permission(
     return AdminPermissionsController.update_permission(permission_id, permission_data.model_dump())
 
 
-@router.delete("/permissions/{permission_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/permissions/{permission_id}", status_code=204)
 @CustomHTTPException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_permission_details", "update_permission_details", "delete_permission"])
@@ -140,7 +139,7 @@ def get_all_plans(
     return AdminPlansController.update_plan_by_id(plan_id, plan_data.model_dump())
 
 
-@router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/plans/{plan_id}", status_code=204)
 @CustomHTTPException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_all_permissions", "read_plan_details", "delete_plan"])

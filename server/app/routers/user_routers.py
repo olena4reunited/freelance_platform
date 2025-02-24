@@ -1,7 +1,6 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
-from starlette import status
 
 from server.app.schemas.token_schemas import Token
 from server.app.schemas.users_schemas import (
@@ -114,7 +113,7 @@ def update_user(
     return UserController.update_user(user["id"], updated_user_data)
 
 
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me", status_code=204)
 @CustomHTTPException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details", "update_own_user_details", "delete_own_user"])
@@ -172,7 +171,7 @@ def edit_user(
     return UserController.update_user(user_id, updated_user_data)
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{user_id}", status_code=204)
 @CustomHTTPException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_user_details", "update_user_details", "delete_user"])
