@@ -11,5 +11,5 @@ def apply_migrations():
                     db.execute_query(file.read())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     apply_migrations()
