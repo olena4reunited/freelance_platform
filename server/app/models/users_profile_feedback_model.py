@@ -56,7 +56,7 @@ class UserProfileFeedback(BaseModel):
             )
 
     @staticmethod
-    def get_all_user_feedback(user_id: int) -> dict[str, Any] | None:
+    def get_all_user_feedback(user_id: int) -> list[dict[str, Any]] | dict[str, Any] | None:
         with PostgresDatabase() as db:
             return db.fetch(
                 """
@@ -89,4 +89,42 @@ class UserProfileFeedback(BaseModel):
                 """,
                 (user_id,),
                 is_all=True
+            )
+
+    @staticmethod
+    def get_user_feedback(
+            feedback_id: int,
+            user_id: int
+    ) -> dict[str, Any] | None:
+        with PostgresDatabase() as db:
+            return db.fetch(
+                """
+                    WITH selected_user_feedback AS (
+                        SELECT 
+                            id, 
+                            content, 
+                            rate,
+                            commentator_id,
+                            profile_id
+                        FROM users_profile_feedbacks
+                        WHERE id = %s
+                    ),
+                    selected_feedback_images AS (
+                        SELECT image_link, profile_feedback_id
+                        FROM selected_user_feedback suf
+                        JOIN profile_feedbacks_images pfi 
+                            ON pfi.profile_feedback_id = suf.id
+                    )
+                    SELECT 
+                        id, 
+                        content, 
+                        rate, 
+                        commentator_id, 
+                        profile_id, 
+                        image_link
+                    FROM selected_user_feedback suf
+                    LEFT JOIN selected_feedback_images sfi
+                        ON suf.id = sfi.profile_feedback_id
+                """,
+                (feedback_id, user_id, ),
             )

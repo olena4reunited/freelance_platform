@@ -33,11 +33,11 @@ def read_your_feedbacks(
 @GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["read_all_feedbacks_own_profile", "read_feedback_details_own_profile"])
-def read_your_feedbacks(
+def read_your_feedbacks_details(
         feedback_id: int,
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    ...
+    return ProfileFeedbackController.get_feedback_details_own_profile(feedback_id=feedback_id, user_id=user.get("id"))
 
 
 @router.get("/{user_id}/feedback", response_model=ProfileFeedbackResponse)
