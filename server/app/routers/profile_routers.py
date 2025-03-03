@@ -19,14 +19,14 @@ from server.app.utils.dependencies import (
 router = APIRouter(prefix="/profile", tags=["feedback"])
 
 
-@router.get("/me/feedback", response_model=ProfileFeedbackResponse)
+@router.get("/me/feedback", response_model=list[ProfileFeedbackResponse])
 @GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["read_all_feedbacks_own_profile"])
 def read_your_feedbacks(
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    ...
+    return ProfileFeedbackController.get_all_feedback_own_profile(user.get("id"))
 
 
 @router.get("/me/feedback/{feedback_id}", response_model=ProfileFeedbackResponse)

@@ -15,3 +15,7 @@ class ProfileFeedbackController:
             commentator_id,
             feedback
         )
+
+    @staticmethod
+    def get_all_feedback_own_profile(user_id: int) -> dict[str, Any] | None:
+        return UserProfileFeedback.get_all_user_feedback(user_id)
