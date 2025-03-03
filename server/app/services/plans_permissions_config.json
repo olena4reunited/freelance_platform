@@ -162,5 +162,37 @@
   {
     "name": "block_order",
     "plans": ["admin"]
+  },
+  {
+    "name": "read_all_feedbacks_own_profile",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_feedback_details_own_profile",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_all_feedbacks_selected_user",
+    "plans": ["admin", "moderator", "customer", "performer"]
+  },
+  {
+    "name": "send_feedback",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "update_feedback_info_created_by_current_user",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "delete_feedback_created_by_current_user",
+    "plans": ["customer", "performer"]
+  },
+  {
+    "name": "read_feedbacks_details_selected_user",
+    "plans": ["admin", "moderator"]
+  },
+  {
+    "name": "delete_feedback_selected_user",
+    "plans": ["admin"]
   }
 ]
