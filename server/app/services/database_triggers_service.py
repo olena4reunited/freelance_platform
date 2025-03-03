@@ -44,6 +44,7 @@ def create_routines():
                         SET rating = aggr.avg_rating
                         FROM aggregated_rating aggr
                         WHERE id = aggr.profile_id;
+                        RETURN NULL;
                     END;
                 $$ LANGUAGE plpgsql;
             """
