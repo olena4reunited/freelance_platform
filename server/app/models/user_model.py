@@ -99,14 +99,24 @@ class User(BaseModel):
     def create_user(user_data: dict[str, Any], user_plan: UserPlanEnum) -> dict[str, Any]:
         query = sql.SQL("""
             WITH selected_plan AS (
-                SELECT id, name FROM plans WHERE name = {user_plan} LIMIT 1
+                SELECT id, name 
+                FROM plans 
+                WHERE name = {user_plan}
+                LIMIT 1
             )
-            INSERT INTO users (first_name, last_name, username, email, phone_number, password, plan_id)
+            INSERT INTO users 
+                (first_name, 
+                 last_name, 
+                 username, 
+                 email, 
+                 phone_number, 
+                 password, 
+                 plan_id)
             VALUES (%s, %s, %s, %s, %s, %s, (SELECT id FROM selected_plan))
             RETURNING id, first_name, last_name, username, email, phone_number, photo_link, description, balance, rating, (SELECT name FROM selected_plan) AS plan_name;
-        """).format(user_plan=sql.Identifier(user_plan.value))
+        """).format(user_plan=sql.Literal(user_plan.value))
 
-        with PostgresDatabase() as db:
+        with PostgresDatabase(on_commit=True) as db:
             return db.fetch(
                 query=query,
                 params=(
@@ -135,7 +145,7 @@ class User(BaseModel):
             id_placeholder=sql.Placeholder("user_id"),
         )
 
-        with PostgresDatabase() as db:
+        with PostgresDatabase(on_commit=True) as db:
             with db.cursor() as cursor:
                 cursor.execute(
                     query,
