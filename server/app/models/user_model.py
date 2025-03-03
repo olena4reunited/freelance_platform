@@ -75,19 +75,17 @@ class User(BaseModel):
         params = tuple()
 
         if plan_name:
-            query = sql.Composed[
+            query = sql.Composed([
                 query,
                 sql.SQL(" WHERE p.name = {}").format(sql.Placeholder())
-            ]
+            ])
             params += (plan_name, )
         if limit:
-            query = sql.Composed[
+            query = sql.Composed([
                 query,
                 sql.SQL(" LIMIT {}").format(sql.Placeholder())
-            ]
+            ])
             params += (limit, )
-
-        query = sql.Composed[query, ";"]
 
         with PostgresDatabase() as db:
             return db.fetch(
