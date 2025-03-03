@@ -33,3 +33,12 @@ class ProfileFeedbackController:
             feedback_id,
             feedback
         )
+
+    @staticmethod
+    def delete_feedback(
+            user_id: int,
+            feedback_id: int
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
+        UserProfileFeedback.delete_record_by_id(feedback_id)
+
+        return UserProfileFeedback.get_all_user_feedback(user_id)

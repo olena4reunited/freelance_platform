@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 from fastapi import APIRouter, Depends
 
@@ -20,7 +20,7 @@ from server.app.utils.dependencies import (
 router = APIRouter(prefix="/profile", tags=["feedback"])
 
 
-@router.get("/me/feedback", response_model=list[ProfileFeedbackResponse])
+@router.get("/me/feedback", response_model=Union[list[ProfileFeedbackResponse], ProfileFeedbackResponse])
 @GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["read_all_feedbacks_own_profile"])
@@ -47,7 +47,7 @@ def read_your_feedbacks_details(
     return ProfileFeedbackController.get_feedback_details_own_profile(feedback_id)
 
 
-@router.get("/{user_id}/feedback", response_model=list[ProfileFeedbackResponse])
+@router.get("/{user_id}/feedback", response_model=Union[list[ProfileFeedbackResponse], ProfileFeedbackResponse])
 @GlobalException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_all_feedbacks_selected_user"])
@@ -93,16 +93,28 @@ def update_feedback(
     return ProfileFeedbackController.update_feedback(feedback_id, feedback_data.model_dump())
 
 
-@router.delete("/{user_id}/feedback/{feedback_id}", response_model=ProfileFeedbackResponse)
+@router.delete("/{user_id}/feedback/{feedback_id}", response_model=Union[list[ProfileFeedbackResponse], ProfileFeedbackResponse])
 @GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["update_feedback_info_created_by_current_user", "delete_feedback_created_by_current_user"])
-def update_feedback(
+def delete_feedback(
         user_id: int,
         feedback_id: int,
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    ...
+    ProfileFeedbackValidator(
+        user_id=user.get("id"),
+        feedback_id=feedback_id,
+    ). \
+    validate_feedback_commentator()
+
+    ProfileFeedbackValidator(
+        user_id=user_id,
+        feedback_id=feedback_id,
+    ). \
+    validate_feedback_user_profile()
+
+    return ProfileFeedbackController.delete_feedback(feedback_id)
 
 
 @router.get("/{user_id}/feedback/{feedback_id}", response_model=ProfileFeedbackResponse)
