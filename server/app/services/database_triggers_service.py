@@ -34,17 +34,16 @@ def create_routines():
                 CREATE OR REPLACE FUNCTION update_user_rating()
                 RETURNS TRIGGER AS $$
                     BEGIN
-                        WITH aggregated_rating AS (
-                            SELECT avg(rate) AS avg_rating, profile_id
+                        UPDATE users
+                        SET rating = subquery.avg_rating
+                        FROM (
+                            SELECT avg(rate) AS avg_rating
                             FROM users_profile_feedbacks
                             WHERE profile_id = NEW.profile_id
-                            GROUP BY profile_id
-                        )
-                        UPDATE users
-                        SET rating = aggr.avg_rating
-                        FROM aggregated_rating aggr
-                        WHERE id = aggr.profile_id;
-                        RETURN NULL;
+                        ) AS subquery
+                        WHERE users.id = NEW.profile_id;
+                        
+                        RETURN NEW;
                     END;
                 $$ LANGUAGE plpgsql;
             """
@@ -57,7 +56,7 @@ def create_triggers():
             """
                 CREATE OR REPLACE TRIGGER trigger_set_blocked_timestamp_orders
                 AFTER UPDATE ON orders
-                FOR EACH STATEMENT
+                FOR EACH ROW
                 EXECUTE PROCEDURE set_blocked_timestamp_orders();
             """
         )
@@ -65,7 +64,7 @@ def create_triggers():
             """
                 CREATE OR REPLACE TRIGGER trigger_set_blocked_timestamp_users
                 AFTER UPDATE ON users
-                FOR EACH STATEMENT
+                FOR EACH ROW
                 EXECUTE PROCEDURE set_blocked_timestamp_users();
             """
         )
@@ -73,7 +72,7 @@ def create_triggers():
             """
                 CREATE OR REPLACE TRIGGER trigger_update_user_rating
                 AFTER INSERT OR UPDATE ON users_profile_feedbacks
-                FOR EACH STATEMENT
+                FOR EACH ROW
                 EXECUTE PROCEDURE update_user_rating();
             """
         )
