@@ -3,6 +3,7 @@ import os
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2.sql import Composed
 
 from server.app.utils.exceptions import GlobalException
 
@@ -37,12 +38,12 @@ class PostgresDatabase:
             self.connection.commit()
         self.connection.close()
 
-    def execute_query(self, query: str, params: tuple | None = None) -> int:
+    def execute_query(self, query: str | Composed, params: tuple | None = None) -> int:
         with self.connection.cursor() as cursor:
             cursor.execute(query, params)
             return cursor.rowcount
 
-    def fetch(self, query: str, params: tuple | None = None, is_all: bool = False) -> list[dict] | dict[str,None] | None:
+    def fetch(self, query: str | Composed, params: tuple | None = None, is_all: bool = False) -> list[dict] | dict[str,None] | None:
         with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(query, params)
             result = cursor.fetchall() if is_all else cursor.fetchone()

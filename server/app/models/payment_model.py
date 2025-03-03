@@ -11,10 +11,20 @@ class Payment(BaseModel):
     def get_payments_by_user(user_id: int) -> list[dict[str, Any]]:
         with PostgresDatabase() as db:
             return db.fetch(
-                f"""
-                    SELECT id, payment FROM {Payment.table_name}
-                    WHERE user_id = %s;
+                """
+                    SELECT id, payment FROM payments WHERE user_id = %s;
                 """,
                 (user_id, ),
                 is_all=True
+            )
+
+    @staticmethod
+    def create_payment(user_id: int, payment_data: bytes) -> None:
+        with PostgresDatabase(on_commit=True) as db:
+            db.execute_query(
+                """
+                    INSERT INTO payments (user_id, payment)
+                    VALUES (%s, %s);
+                """,
+                (user_id, payment_data)
             )
