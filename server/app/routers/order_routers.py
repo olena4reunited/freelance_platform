@@ -24,7 +24,7 @@ from server.app.validators.order_validators import (
 from server.app.controllers.order_customer_controller import OrderCustomerController
 from server.app.controllers.order_performer_controller import OrderPerformerController
 from server.app.controllers.order_admin_controller import OrderAdminController
-from server.app.utils.exceptions import CustomHTTPException
+from server.app.utils.exceptions import GlobalException
 from server.app.utils.dependencies import (
     get_current_user,
     required_plans,
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.get("/customer/me/list", response_model=Union[list[OrderListResponse], OrderListResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["read_own_orders"])
 def get_order_list(user: dict[str, Any] = Depends(get_current_user)):
@@ -47,7 +47,7 @@ def get_order_list(user: dict[str, Any] = Depends(get_current_user)):
 
 
 @router.get("/customer/me/performers", response_model=Union[list[UserPerformerResponse], UserPerformerResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["read_own_orders", "read_own_orders_performers"])
 def get_order_list_performers(user: dict[str, Any] = Depends(get_current_user)):
@@ -58,7 +58,7 @@ def get_order_list_performers(user: dict[str, Any] = Depends(get_current_user)):
 
 
 @router.get("/customer/me/list/{order_id}", response_model=OrderSingleResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["read_own_orders", "read_own_order_details"])
 def get_order_list(
@@ -73,7 +73,7 @@ def get_order_list(
 
 
 @router.post("/customer/me", response_model=OrderSingleResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["create_order"])
 def create_order(
@@ -90,7 +90,7 @@ def create_order(
 
 
 @router.patch("/customer/me/list/{order_id}", response_model=OrderSingleResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["read_own_orders", "read_own_order_details", "update_own_order"])
 def update_order(
@@ -106,7 +106,7 @@ def update_order(
 
 
 @router.delete("/customer/me/list/{order_id}", response_model=Union[list[OrderListResponse], OrderListResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["update_own_order", "delete_own_order"])
 def delete_order(
@@ -122,7 +122,7 @@ def delete_order(
 
 
 @router.get("/performer/list", response_model=Union[list[OrderListPerformerResponse], OrderListPerformerResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders"])
 def get_all_unassigned_orders(
@@ -137,7 +137,7 @@ def get_all_unassigned_orders(
 
 
 @router.post("/performer/list/{order_id}", response_model=OrderPerformerAssignedResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders", "assign_themself_to_order"])
 def assign_themself_to_order(
@@ -152,7 +152,7 @@ def assign_themself_to_order(
 
 
 @router.get("/performer/me/list", response_model=Union[list[OrderPerformerAssignedResponse], OrderPerformerAssignedResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["performer"])
 @required_permissions(["read_own_orders"])
 def get_all_own_orders(
@@ -165,7 +165,7 @@ def get_all_own_orders(
 
 
 @router.get("/performer/me/customers", response_model=Union[list[UserCustomerResponse], UserCustomerResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["performer"])
 @required_permissions(["read_own_orders", "read_own_orders_customers"])
 def get_all_assigned_orders_customers(
@@ -178,7 +178,7 @@ def get_all_assigned_orders_customers(
 
 
 @router.get("/admin/orders", response_model=Union[list[OrderListResponse], OrderListResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_orders"])
 def get_all_orders(
@@ -188,7 +188,7 @@ def get_all_orders(
 
 
 @router.get("/admin/orders/{order_id}", response_model=OrderSingleResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_orders", "read_all_orders_details"])
 def get_single_order(
@@ -199,7 +199,7 @@ def get_single_order(
 
 
 @router.patch("/admin/orders/{order_id}", response_model=OrderSingleResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_orders_details", "update_all_orders_details"])
 def update_order(
@@ -211,7 +211,7 @@ def update_order(
 
 
 @router.delete("/admin/orders/{order_id}", response_model=Union[list[OrderListResponse], OrderListResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_orders_details", "update_all_orders_details", "delete_all_orders"])
 def delete_order(
@@ -223,7 +223,7 @@ def delete_order(
 
 
 @router.put("/admin/orders/{order_id}", response_model=OrderSingleResponseExtended)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_orders_details", "update_all_orders_details", "block_order"])
 def block_order(

@@ -4,7 +4,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from server.app.utils.exceptions import CustomHTTPException
+from server.app.utils.exceptions import GlobalException
 
 
 def load_config() -> dict:
@@ -24,7 +24,7 @@ class PostgresDatabase:
             self.connection = psycopg2.connect(**self.config)
             self.connection.autocommit = False
         except Exception as e:
-             CustomHTTPException.raise_exception(
+             GlobalException.CustomHTTPException.raise_exception(
                  status_code=500,
                  detail=f"Could not connect to PostgreSQL: {e}"
              )

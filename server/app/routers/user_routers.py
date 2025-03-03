@@ -21,14 +21,14 @@ from server.app.utils.dependencies import (
     required_permissions,
     handle_jwt_errors
 )
-from server.app.utils.exceptions import CustomHTTPException
+from server.app.utils.exceptions import GlobalException
 
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/customer/register", response_model=UserResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 def create_user_customer(user_customer_data: UserCreateCustomer):
     UserValidator(
             MethodEnum.create,
@@ -46,7 +46,7 @@ def create_user_customer(user_customer_data: UserCreateCustomer):
 
 
 @router.post("/performer/register", response_model=UserResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 def create_user_performer(user_performer_data: UserCreatePerformer):
     UserValidator(
         MethodEnum.create,
@@ -64,7 +64,7 @@ def create_user_performer(user_performer_data: UserCreatePerformer):
 
 
 @router.post("/token", response_model=Token)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 def create_user_token(user_data: UserCreateToken):
     UserTokenValidator(
         email=user_data.email,
@@ -77,13 +77,13 @@ def create_user_token(user_data: UserCreateToken):
 
 @router.post("/token/refresh", response_model=Token)
 @handle_jwt_errors
-@CustomHTTPException.catcher
+@GlobalException.catcher
 def refresh_user_token(refresh_tkn: dict[str, str]):
     return UserController.refresh_bearer_token(refresh_tkn["refresh_token"])
 
 
 @router.get("/me", response_model=UserResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details"])
 def read_user_me(user: dict[str, Any] = Depends(get_current_user)):
@@ -91,7 +91,7 @@ def read_user_me(user: dict[str, Any] = Depends(get_current_user)):
 
 
 @router.patch("/me", response_model=UserResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details", "update_own_user_details"])
 def update_user(
@@ -114,7 +114,7 @@ def update_user(
 
 
 @router.delete("/me", status_code=204)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details", "update_own_user_details", "delete_own_user"])
 def delete_user(
@@ -125,7 +125,7 @@ def delete_user(
 
 
 @router.get("/list", response_model=list[UserResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_list"])
 def read_all_users(
@@ -137,7 +137,7 @@ def read_all_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_list", "read_user_details"])
 def get_user(
@@ -148,7 +148,7 @@ def get_user(
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_users_list", "read_user_details", "update_user_details"])
 def edit_user(
@@ -172,7 +172,7 @@ def edit_user(
 
 
 @router.delete("/{user_id}", status_code=204)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_user_details", "update_user_details", "delete_user"])
 def delete_user(

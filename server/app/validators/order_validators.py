@@ -1,6 +1,6 @@
 from server.app.models.order_model import Order
 from server.app.models.user_model import User
-from server.app.utils.exceptions import CustomHTTPException
+from server.app.utils.exceptions import GlobalException
 
 
 class OrderCustomerValidator:
@@ -16,13 +16,13 @@ class OrderCustomerValidator:
         customer = User.get_record_by_id(self.customer_id)
 
         if not customer:
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Customer not found",
                 extra={"customer_id": self.customer_id},
             )
         if customer.get("is_blocked"):
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=403,
                 detail="Customer is blocked",
                 extra={"customer_id": self.customer_id, "blocked_until": customer.get("block_expired", None)},
@@ -33,19 +33,19 @@ class OrderCustomerValidator:
         order = Order.get_record_by_id(self.order_id)
 
         if not order:
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Order not found",
                 extra={"order_id": self.order_id},
             )
         if order.get("customer_id") != self.customer_id:
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=403,
                 detail="Order does not belong to customer",
                 extra={"order_id": self.order_id, "customer_id": self.customer_id},
             )
         if order.get("is_blocked"):
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=403,
                 detail="Order is blocked",
                 extra={"order_id": self.order_id, "blocked_until": order.get("blocked_until", None)},
@@ -66,13 +66,13 @@ class OrderPerformerValidator:
         performer = User.get_record_by_id(self.performer_id)
 
         if not performer:
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Performer not found",
                 extra={"performer_id": self.performer_id},
             )
         if performer.get("is_blocked"):
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=403,
                 detail="Performer is blocked",
                 extra={"performer_id": self.performer_id, "block_expired": performer.get("block_expired", None)}
@@ -83,25 +83,25 @@ class OrderPerformerValidator:
         order = Order.get_record_by_id(self.order_id)
 
         if not order:
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Order not found",
                 extra={"order_id": self.order_id},
             )
         if order.get("performer_id") == self.performer_id:
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Performer is already assigned themself to the order",
                 extra={"order_id": self.order_id, "performer_id": self.performer_id},
             )
         if order.get("performer_id"):
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Order is already accepted by performer",
                 extra={"order_id": self.order_id, "performer_id": self.performer_id},
             )
         if order.get("is_blocked"):
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=403,
                 detail="Order is blocked",
                 extra={"order_id": self.order_id, "blocked_until": order.get("blocked_until", None)}

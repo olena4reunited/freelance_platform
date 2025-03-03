@@ -23,14 +23,14 @@ from server.app.schemas.plan_schemas import (
     PlanResponse,
     PlanResponseExtended
 )
-from server.app.utils.exceptions import CustomHTTPException
+from server.app.utils.exceptions import GlobalException
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/permissions", response_model=list[PermissionResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_permissions", "read_all_plans"])
 def get_all_permissions(
@@ -40,7 +40,7 @@ def get_all_permissions(
 
 
 @router.post("/permissions", response_model=Union[list[PermissionResponse], PermissionResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["create_permissions"])
 def create_permission(
@@ -51,7 +51,7 @@ def create_permission(
 
 
 @router.get("/permissions/me", response_model=list[PermissionResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_own_permissions"])
 def get_all_permissions(
@@ -61,7 +61,7 @@ def get_all_permissions(
 
 
 @router.get("/permissions/{permission_id}", response_model=Union[list[PermissionResponse], PermissionResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_permission_details"])
 def get_permission(
@@ -72,7 +72,7 @@ def get_permission(
 
 
 @router.patch("/permissions/{permission_id}", response_model=Union[list[PermissionResponse], PermissionResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_permission_details", "update_permission_details"])
 def update_permission(
@@ -84,7 +84,7 @@ def update_permission(
 
 
 @router.delete("/permissions/{permission_id}", response_model=list[PermissionResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_permission_details", "update_permission_details", "delete_permission"])
 def delete_permission(
@@ -96,7 +96,7 @@ def delete_permission(
 
 
 @router.get("/plans", response_model=Union[list[PlanResponse], PlanResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_all_permissions"])
 def get_all_plans(
@@ -106,7 +106,7 @@ def get_all_plans(
 
 
 @router.post("/plans", response_model=PlanResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_plan_details", "create_plans"])
 def create_plan(
@@ -117,7 +117,7 @@ def create_plan(
 
 
 @router.get("/plans/{plan_id}", response_model=Union[list[PlanResponseExtended], PlanResponseExtended])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_all_permissions", "read_plan_details"])
 def get_all_plans(
@@ -128,7 +128,7 @@ def get_all_plans(
 
 
 @router.patch("/plans/{plan_id}", response_model=PlanResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_plan_details", "update_plan_details"])
 def get_all_plans(
@@ -140,7 +140,7 @@ def get_all_plans(
 
 
 @router.delete("/plans/{plan_id}", response_model=Union[list[PlanResponse], PlanResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_plans", "read_all_permissions", "read_plan_details", "delete_plan"])
 def delete_plan(
@@ -152,7 +152,7 @@ def delete_plan(
 
 
 @router.patch("/users/{user_id}", response_model=UserResponseExtended)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["block_user"])
 def block_user(

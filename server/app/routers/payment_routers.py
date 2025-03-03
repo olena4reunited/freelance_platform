@@ -13,14 +13,14 @@ from server.app.schemas.payment_schemas import (
     PaymentCreate,
     PaymentResponse, PaymentResponseExtended
 )
-from server.app.utils.exceptions import CustomHTTPException
+from server.app.utils.exceptions import GlobalException
 
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 @router.post("/add_payment", response_model=PaymentResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["create_payment", "read_own_payment_list", "read_own_payment_details"])
 def add_payment_details(
@@ -34,7 +34,7 @@ def add_payment_details(
 
 
 @router.get("/me/list", response_model=Union[list[PaymentResponse], PaymentResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["read_own_payment_list"])
 def get_payment_list(
@@ -44,7 +44,7 @@ def get_payment_list(
 
 
 @router.get("/me/list/{payment_id}", response_model=PaymentResponse)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["read_own_payment_list", "read_own_payment_details"])
 def get_payment_details(
@@ -58,7 +58,7 @@ def get_payment_details(
 
 
 @router.delete("/me/list/{payment_id}", status_code=204)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["customer", "performer"])
 @required_permissions(["read_own_payment_details", "delete_own_payment"])
 def delete_payment(
@@ -73,7 +73,7 @@ def delete_payment(
 
 
 @router.get("/list", response_model=Union[list[PaymentResponseExtended], PaymentResponseExtended])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments"])
 def get_all_payments(
@@ -83,7 +83,7 @@ def get_all_payments(
 
 
 @router.get("/{user_id}/list", response_model=Union[list[PaymentResponse], PaymentResponse])
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments", "read_user_payments"])
 def get_user_payments(
@@ -94,7 +94,7 @@ def get_user_payments(
 
 
 @router.get("/{user_id}/list/{payment_id}", response_model=PaymentResponseExtended)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details"])
 def get_user_payment_details(
@@ -106,7 +106,7 @@ def get_user_payment_details(
 
 
 @router.delete("/{user_id}/list/{payment_id}", status_code=204)
-@CustomHTTPException.catcher
+@GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_users_payments", "read_user_payments", "read_user_payment_details", "delete_user_payment"])
 def delete_user_payment(

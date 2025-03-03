@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives import serialization
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 
-from server.app.utils.exceptions import CustomHTTPException
+from server.app.utils.exceptions import GlobalException
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -70,7 +70,7 @@ def verify_token(token: str) -> dict[str, Any] | None:
         payload = jwt.decode(token, public_key, algorithms=["RS256"])
 
         if not payload.get("sub") or not isinstance(payload.get("sub"), str):
-            CustomHTTPException.raise_exception(
+            GlobalException.CustomHTTPException.raise_exception(
                 status_code=401,
                 detail="Invalid token",
             )
@@ -78,7 +78,7 @@ def verify_token(token: str) -> dict[str, Any] | None:
         return payload
 
     except (jwt.PyJWTError, jwt.ExpiredSignatureError) as e:
-        CustomHTTPException.raise_exception(
+        GlobalException.CustomHTTPException.raise_exception(
             status_code=401,
             detail="Invalid token",
         )

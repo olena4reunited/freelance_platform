@@ -10,11 +10,12 @@ from server.app.routers.user_routers import router as user_router
 from server.app.routers.admin_routers import router as admin_router
 from server.app.routers.payment_routers import router as payment_router
 from server.app.routers.order_routers import router as order_router
+from server.app.routers.profile_routers import router as profile_router
 from server.app.utils.redis_client import redis_client
 from server.app.services.cache_permissions_service import load_permissions
 from server.app.utils.exceptions import (
-    CustomHTTPException,
-    custom_exception_handler,
+    GlobalException,
+    global_exception_handler,
     response_validation_exception_handler
 )
 
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -55,15 +57,15 @@ app.add_middleware(
 )
 
 
-app.add_exception_handler(CustomHTTPException, custom_exception_handler)
+app.add_exception_handler(GlobalException, global_exception_handler)
 app.add_exception_handler(ResponseValidationError, response_validation_exception_handler)
 
 
 app.include_router(user_router)
 app.include_router(admin_router)
 app.include_router(payment_router)
-
 app.include_router(order_router)
+app.include_router(profile_router)
 
 
 if __name__ == "__main__":
