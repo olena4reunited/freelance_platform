@@ -25,4 +25,4 @@ class ProfileFeedbackController:
             feedback_id: int,
             user_id: int
     ) -> dict[str, Any] | None:
-        return UserProfileFeedback.get_user_feedback(feedback_id, user_id)
+        return UserProfileFeedback.get_user_feedback(feedback_id)

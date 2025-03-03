@@ -92,10 +92,7 @@ class UserProfileFeedback(BaseModel):
             )
 
     @staticmethod
-    def get_user_feedback(
-            feedback_id: int,
-            user_id: int
-    ) -> dict[str, Any] | None:
+    def get_user_feedback(feedback_id: int) -> dict[str, Any] | None:
         with PostgresDatabase() as db:
             return db.fetch(
                 """
@@ -126,5 +123,5 @@ class UserProfileFeedback(BaseModel):
                     LEFT JOIN selected_feedback_images sfi
                         ON suf.id = sfi.profile_feedback_id
                 """,
-                (feedback_id, user_id, ),
+                (feedback_id, ),
             )

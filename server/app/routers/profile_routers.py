@@ -8,6 +8,7 @@ from server.app.schemas.profile_feedback_schemas import (
     ProfileFeedbackResponse
 )
 from server.app.controllers.profile_feedback_controller import ProfileFeedbackController
+from server.app.validators.profile_feedback_validators import ProfileFeedbackValidator
 from server.app.utils.exceptions import GlobalException
 from server.app.utils.dependencies import (
     get_current_user,
@@ -37,7 +38,13 @@ def read_your_feedbacks_details(
         feedback_id: int,
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    return ProfileFeedbackController.get_feedback_details_own_profile(feedback_id=feedback_id, user_id=user.get("id"))
+    ProfileFeedbackValidator(
+        user_id=user.get("id"),
+        feedback_id=feedback_id,
+    ). \
+    validate_feedback_user_profile()
+
+    return ProfileFeedbackController.get_feedback_details_own_profile(feedback_id)
 
 
 @router.get("/{user_id}/feedback", response_model=ProfileFeedbackResponse)
