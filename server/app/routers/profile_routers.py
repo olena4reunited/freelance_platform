@@ -27,7 +27,7 @@ router = APIRouter(prefix="/profile", tags=["feedback"])
 def read_your_feedbacks(
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    return ProfileFeedbackController.get_all_feedback_own_profile(user.get("id"))
+    return ProfileFeedbackController.get_all_user_feedback(user.get("id"))
 
 
 @router.get("/me/feedback/{feedback_id}", response_model=ProfileFeedbackResponse)
@@ -47,7 +47,7 @@ def read_your_feedbacks_details(
     return ProfileFeedbackController.get_feedback_details_own_profile(feedback_id)
 
 
-@router.get("/{user_id}/feedback", response_model=ProfileFeedbackResponse)
+@router.get("/{user_id}/feedback", response_model=list[ProfileFeedbackResponse])
 @GlobalException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_all_feedbacks_selected_user"])
@@ -55,7 +55,7 @@ def read_user_feedbacks(
         user_id: int,
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    ...
+    return ProfileFeedbackController.get_all_user_feedback(user_id)
 
 
 @router.post("/{user_id}/feedback", response_model=ProfileFeedbackResponse)
@@ -84,7 +84,13 @@ def update_feedback(
         feedback_data: ProfileFeedbackUpdate,
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    ...
+    ProfileFeedbackValidator(
+        user_id=user.get("id"),
+        feedback_id=feedback_id,
+    ). \
+    validate_feedback_commentator()
+
+    return ProfileFeedbackController.update_feedback(feedback_id, feedback_data.model_dump())
 
 
 @router.delete("/{user_id}/feedback/{feedback_id}", response_model=ProfileFeedbackResponse)

@@ -1,5 +1,8 @@
 from typing import Any
 
+from psycopg2 import sql
+from psycopg2.extras import RealDictCursor
+
 from server.app.models._base_model import BaseModel
 from server.app.database.database import PostgresDatabase
 
@@ -108,9 +111,8 @@ class UserProfileFeedback(BaseModel):
                     ),
                     selected_feedback_images AS (
                         SELECT image_link, profile_feedback_id
-                        FROM selected_user_feedback suf
-                        JOIN profile_feedbacks_images pfi 
-                            ON pfi.profile_feedback_id = suf.id
+                        FROM profile_feedbacks_images 
+                        WHERE profile_feedback_id = %s
                     )
                     SELECT 
                         id, 
@@ -123,5 +125,64 @@ class UserProfileFeedback(BaseModel):
                     LEFT JOIN selected_feedback_images sfi
                         ON suf.id = sfi.profile_feedback_id
                 """,
-                (feedback_id, ),
+                (feedback_id, feedback_id, ),
             )
+
+    @staticmethod
+    def update_user_profile_feedback(feedback_id: int, feedback: dict[str, Any]) -> dict[str, Any] | None:
+        set_clause = sql.SQL(", ").join(
+            sql.SQL("{} = {}").format(sql.Identifier(k), sql.Placeholder())
+            for k in feedback.keys() if k != "image_link" and feedback[k] is not None
+        )
+        params = tuple(v for k, v in feedback.items() if k != "image_link" and v is not None) + (feedback_id,)
+
+        query = sql.SQL("""
+            WITH updated_feedback AS (
+                UPDATE users_profile_feedbacks 
+                SET {set_clause}
+                WHERE id = %s
+                RETURNING id
+            )
+            UPDATE profile_feedbacks_images
+            SET image_link = COALESCE(%s, image_link)
+            WHERE profile_feedback_id = (SELECT id FROM updated_feedback)
+        """).format(set_clause=set_clause)
+
+        with PostgresDatabase(on_commit=True) as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    query,
+                    params + (feedback.get("image_link", None),),
+                )
+
+                cursor.execute(
+                    sql.SQL("""
+                        WITH selected_user_feedback AS (
+                        SELECT 
+                            id, 
+                            content, 
+                            rate,
+                            commentator_id,
+                            profile_id
+                        FROM users_profile_feedbacks
+                        WHERE id = %s
+                        ),
+                        selected_feedback_images AS (
+                            SELECT image_link, profile_feedback_id
+                            FROM profile_feedbacks_images 
+                            WHERE profile_feedback_id = %s
+                        )
+                        SELECT 
+                            id, 
+                            content, 
+                            rate, 
+                            commentator_id, 
+                            profile_id, 
+                            image_link
+                        FROM selected_user_feedback suf
+                        LEFT JOIN selected_feedback_images sfi
+                            ON suf.id = sfi.profile_feedback_id
+                    """),
+                    (feedback_id, feedback_id, ),
+                )
+                return cursor.fetchone()

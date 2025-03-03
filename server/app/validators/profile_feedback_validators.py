@@ -22,3 +22,19 @@ class ProfileFeedbackValidator:
             )
 
         return self
+
+    def validate_feedback_commentator(self):
+        feedback = UserProfileFeedback.get_record_by_id(self.feedback_id)
+
+        if not feedback:
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=404,
+                detail="Requested feedback was not found"
+            )
+        if feedback.get("commentator_id") != self.user_id:
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=403,
+                detail="Requested feedback was forbidden to perform for current user"
+            )
+
+        return self
