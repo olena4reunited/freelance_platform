@@ -14,13 +14,7 @@ class GlobalException(Exception):
         def wrapper(*args: Any, **kwargs: Any) -> Exception:
             try:
                 return func(*args, **kwargs)
-            except IntegrityError as e:
-                GlobalException.CustomHTTPException.raise_exception(
-                    500,
-                    "Database integrity error",
-                    extra={"error": str(e)}
-                )
-            except (DatabaseError, OperationalError) as e:
+            except (DatabaseError, OperationalError, IntegrityError) as e:
                 GlobalException.CustomHTTPException.raise_exception(
                     500,
                     "Database error",
