@@ -2,7 +2,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from server.app.models.user_model import User
 from server.app.schemas.profile_feedback_schemas import (
     ProfileFeedbackCreate,
     ProfileFeedbackUpdate,
