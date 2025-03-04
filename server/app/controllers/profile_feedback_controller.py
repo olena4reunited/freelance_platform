@@ -21,7 +21,7 @@ class ProfileFeedbackController:
         return UserProfileFeedback.get_all_user_feedback(user_id)
 
     @staticmethod
-    def get_feedback_details_own_profile(feedback_id: int) -> dict[str, Any] | None:
+    def get_feedback_details(feedback_id: int) -> dict[str, Any] | None:
         return UserProfileFeedback.get_user_feedback(feedback_id)
 
     @staticmethod

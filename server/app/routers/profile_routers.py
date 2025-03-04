@@ -1,4 +1,5 @@
 from typing import Any, Union
+import json
 
 from fastapi import APIRouter, Depends
 
@@ -15,6 +16,7 @@ from server.app.utils.dependencies import (
     required_plans,
     required_permissions
 )
+from server.app.utils.redis_client import redis_client
 
 
 router = APIRouter(prefix="/profile", tags=["feedback"])
@@ -44,7 +46,7 @@ def read_your_feedbacks_details(
     ). \
     validate_feedback_user_profile()
 
-    return ProfileFeedbackController.get_feedback_details_own_profile(feedback_id)
+    return ProfileFeedbackController.get_feedback_details(feedback_id)
 
 
 @router.get("/{user_id}/feedback", response_model=Union[list[ProfileFeedbackResponse], ProfileFeedbackResponse])
@@ -95,26 +97,50 @@ def update_feedback(
 
 @router.delete("/{user_id}/feedback/{feedback_id}", response_model=Union[list[ProfileFeedbackResponse], ProfileFeedbackResponse])
 @GlobalException.catcher
-@required_plans(["customer", "performer"])
-@required_permissions(["update_feedback_info_created_by_current_user", "delete_feedback_created_by_current_user"])
+@required_plans(["admin", "moderator", "customer", "performer"])
 def delete_feedback(
         user_id: int,
         feedback_id: int,
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    ProfileFeedbackValidator(
-        user_id=user.get("id"),
-        feedback_id=feedback_id,
-    ). \
-    validate_feedback_commentator()
+    try:
+        user_plan = user.get("plan")
+        user_permissions = set(json.loads(redis_client.hgetall(user_plan).get("permissions")))
 
-    ProfileFeedbackValidator(
-        user_id=user_id,
-        feedback_id=feedback_id,
-    ). \
-    validate_feedback_user_profile()
+        if not user_plan:
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=403,
+                detail="User plan not found",
+            )
+        if user_plan in ["customer", "performer"]:
+            if not {"update_feedback_info_created_by_current_user", "delete_feedback_created_by_current_user"}.issubset(user_permissions):
+                GlobalException.CustomHTTPException.raise_exception(
+                    status_code=403,
+                    detail="User does not have permission to access resource"
+                )
+            ProfileFeedbackValidator(
+                user_id=user.get("id"),
+                feedback_id=feedback_id,
+            ). \
+            validate_feedback_commentator()
+        if user_plan in ["admin", "moderator"]:
+            if not {"read_feedbacks_details_selected_user", "delete_feedback_selected_user"}.issubset(user_permissions):
+                GlobalException.CustomHTTPException.raise_exception(
+                    status_code=403,
+                    detail="User does not have permission to access resource"
+                )
 
-    return ProfileFeedbackController.delete_feedback(feedback_id)
+        ProfileFeedbackValidator(
+            user_id=user_id,
+            feedback_id=feedback_id,
+        ). \
+        validate_feedback_user_profile()
+    except GlobalException.CustomHTTPException as e:
+        if e.status_code == 404:
+            pass
+        raise e
+    finally:
+        return ProfileFeedbackController.delete_feedback(user_id=user_id, feedback_id=feedback_id)
 
 
 @router.get("/{user_id}/feedback/{feedback_id}", response_model=ProfileFeedbackResponse)
@@ -126,16 +152,10 @@ def read_user_feedback_details(
         feedback_id: int,
         user: dict[str, Any] = Depends(get_current_user),
 ):
-    ...
+    ProfileFeedbackValidator(
+        user_id=user_id,
+        feedback_id=feedback_id,
+    ). \
+    validate_feedback_user_profile()
 
-
-@router.delete("/{user_id}/feedback/{feedback_id}", response_model=ProfileFeedbackResponse)
-@GlobalException.catcher
-@required_plans(["admin", "moderator"])
-@required_permissions(["read_feedbacks_details_selected_user", "delete_feedback_selected_user"])
-def update_feedback(
-        user_id: int,
-        feedback_id: int,
-        user: dict[str, Any] = Depends(get_current_user),
-):
-    ...
+    return ProfileFeedbackController.get_feedback_details(feedback_id)
