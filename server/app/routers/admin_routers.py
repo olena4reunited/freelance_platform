@@ -7,7 +7,7 @@ from server.app.controllers.admin_permissions_controller import AdminPermissions
 from server.app.controllers.admin_user_controller import AdminUserController
 from server.app.schemas.users_schemas import UserResponseExtended
 from server.app.schemas.admin_schemas import BlockRequest
-from server.app.utils.dependencies import (
+from server.app.utils.dependencies.dependencies import (
     get_current_user,
     required_plans,
     required_permissions

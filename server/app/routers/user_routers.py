@@ -15,7 +15,7 @@ from server.app.validators.user_validators import (
     UserTokenValidator,
     MethodEnum
 )
-from server.app.utils.dependencies import (
+from server.app.utils.dependencies.dependencies import (
     get_current_user,
     required_plans,
     required_permissions,

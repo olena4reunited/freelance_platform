@@ -25,7 +25,7 @@ from server.app.controllers.order_customer_controller import OrderCustomerContro
 from server.app.controllers.order_performer_controller import OrderPerformerController
 from server.app.controllers.order_admin_controller import OrderAdminController
 from server.app.utils.exceptions import GlobalException
-from server.app.utils.dependencies import (
+from server.app.utils.dependencies.dependencies import (
     get_current_user,
     required_plans,
     required_permissions

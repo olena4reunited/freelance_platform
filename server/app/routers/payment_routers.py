@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from server.app.validators.payment_validators import PaymentValidator
 from server.app.controllers.payment_controller import PaymentController
-from server.app.utils.dependencies import (
+from server.app.utils.dependencies.dependencies import (
     required_permissions,
     required_plans,
     get_current_user
