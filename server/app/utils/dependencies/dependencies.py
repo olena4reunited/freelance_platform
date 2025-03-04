@@ -68,6 +68,7 @@ async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, 
             detail="Could not validate credentials."
         )
 
+
 @handle_jwt_errors
 def required_plans(allowed_plans: list[str]):
     def decorator(func: Callable):
