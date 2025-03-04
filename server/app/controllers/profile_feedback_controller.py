@@ -1,6 +1,7 @@
 from typing import Any
 
 from server.app.models.users_profile_feedback_model import UserProfileFeedback
+from server.app.serializers.profile_feedback_serializers import serialize_profile_feedback
 
 
 class ProfileFeedbackController:
@@ -17,12 +18,16 @@ class ProfileFeedbackController:
         )
 
     @staticmethod
-    def get_all_user_feedback(user_id: int) -> dict[str, Any] | None:
-        return UserProfileFeedback.get_all_user_feedback(user_id)
+    def get_all_user_feedback(user_id: int) -> list[dict[str, Any]] | None:
+        feedback = UserProfileFeedback.get_all_user_feedback(user_id)
+
+        return list(map(serialize_profile_feedback, feedback))
 
     @staticmethod
     def get_feedback_details(feedback_id: int) -> dict[str, Any] | None:
-        return UserProfileFeedback.get_user_feedback(feedback_id)
+        feedback = UserProfileFeedback.get_user_feedback(feedback_id)
+
+        return serialize_profile_feedback(feedback)
 
     @staticmethod
     def update_feedback(

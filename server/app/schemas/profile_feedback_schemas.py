@@ -1,6 +1,11 @@
 from pydantic import BaseModel, conint
 
 
+class CommentatorBase(BaseModel):
+    username: str
+    photo_link: str | None = None
+
+
 class ProfileFeedbackCreate(BaseModel):
     content: str | None = None
     rate: conint(ge=0, le=5)
@@ -17,6 +22,6 @@ class ProfileFeedbackResponse(BaseModel):
     id: int
     content: str | None = None
     rate: conint(ge=0, le=5)
-    commentator_id: int | None = None
+    commentator: CommentatorBase
     profile_id: int
     image_link: str | None = None

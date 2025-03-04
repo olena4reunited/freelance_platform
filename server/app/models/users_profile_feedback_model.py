@@ -65,12 +65,15 @@ class UserProfileFeedback(BaseModel):
                 """
                     WITH selected_user_feedback AS (
                         SELECT 
-                            id, 
+                            upf.id AS id, 
                             content, 
                             rate,
-                            commentator_id,
+                            username,
+                            photo_link,
                             profile_id
-                        FROM users_profile_feedbacks
+                        FROM users_profile_feedbacks upf
+                        LEFT JOIN users u
+                            ON upf.commentator_id = u.id
                         WHERE profile_id = %s
                     ),
                     selected_feedback_images AS (
@@ -83,7 +86,8 @@ class UserProfileFeedback(BaseModel):
                         id, 
                         content, 
                         rate, 
-                        commentator_id, 
+                        suf.username AS commentator_username,
+                        suf.photo_link AS commentator_photo_link,
                         profile_id, 
                         image_link
                     FROM selected_user_feedback suf
@@ -101,13 +105,16 @@ class UserProfileFeedback(BaseModel):
                 """
                     WITH selected_user_feedback AS (
                         SELECT 
-                            id, 
+                            upf.id AS id, 
                             content, 
                             rate,
-                            commentator_id,
+                            username,
+                            photo_link,
                             profile_id
-                        FROM users_profile_feedbacks
-                        WHERE id = %s
+                        FROM users_profile_feedbacks upf
+                        LEFT JOIN users u
+                            ON upf.commentator_id = u.id
+                        WHERE upf.id = %s
                     ),
                     selected_feedback_images AS (
                         SELECT image_link, profile_feedback_id
@@ -118,7 +125,8 @@ class UserProfileFeedback(BaseModel):
                         id, 
                         content, 
                         rate, 
-                        commentator_id, 
+                        suf.username AS commentator_username,
+                        suf.photo_link AS commentator_photo_link,
                         profile_id, 
                         image_link
                     FROM selected_user_feedback suf
