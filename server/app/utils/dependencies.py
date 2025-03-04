@@ -49,6 +49,16 @@ async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, 
                 status_code=400,
                 detail="User does not exist. Provide valid credentials."
             )
+        if user.get("is_blocked", None) or user.get("block_expired", None):
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=403,
+                detail="User was forbidden to perform this action."
+            )
+        if user.get("delete_date", None):
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=403,
+                detail="User was requested to perform deletion. Provide valid credentials or restore profile"
+            )
 
         return user
 
