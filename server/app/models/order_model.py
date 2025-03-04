@@ -17,13 +17,28 @@ class Order(BaseModel):
             return db.fetch(
                 """
                     WITH customers_orders AS (
-                        SELECT o.id AS id, o.name AS name, o.description AS description, o.customer_id AS customer_id, COALESCE(o.performer_id, NULL) AS performer_id, COALESCE(i.image_link, NULL) AS image_link, COALESCE(oi.is_main, NULL) AS is_main
+                        SELECT 
+                            o.id AS id, 
+                            o.name AS name, 
+                            o.description AS description, 
+                            o.customer_id AS customer_id, 
+                            COALESCE(o.performer_id, NULL) AS performer_id, 
+                            COALESCE(i.image_link, NULL) AS image_link, 
+                            COALESCE(oi.is_main, NULL) AS is_main
                         FROM orders o
-                        LEFT JOIN orders_images oi ON o.id = oi.order_id
-                        LEFT JOIN images i ON i.id = oi.image_id
+                        LEFT JOIN orders_images oi 
+                            ON o.id = oi.order_id
+                        LEFT JOIN images i 
+                            ON i.id = oi.image_id
                         WHERE customer_id = %s AND (oi.is_main IS TRUE OR NULL)
                     )
-                    SELECT id, name, description, customer_id, performer_id, image_link
+                    SELECT 
+                        id, 
+                        name, 
+                        description, 
+                        customer_id, 
+                        performer_id, 
+                        image_link
                     FROM customers_orders;
                 """,
                 (customer_id, ),
@@ -38,14 +53,23 @@ class Order(BaseModel):
             return db.fetch(
                 """
                     WITH selected_performers_ids AS (
-                        SELECT ARRAY_AGG(id) AS order_ids, performer_id
+                        SELECT 
+                            ARRAY_AGG(id) AS order_ids, 
+                            performer_id
                         FROM orders
                         WHERE customer_id = %s
                         GROUP BY performer_id 
                     )
-                    SELECT spf.order_ids AS order_ids, u.id AS id, username, first_name, last_name, photo_link
+                    SELECT 
+                        spf.order_ids AS order_ids, 
+                        u.id AS id,
+                        username,
+                        first_name, 
+                        last_name, 
+                        photo_link
                     FROM selected_performers_ids spf
-                    JOIN users u ON spf.performer_id = u.id
+                    JOIN users u 
+                        ON spf.performer_id = u.id
                 """,
                 (customer_id, ),
                 is_all=True,
@@ -57,14 +81,24 @@ class Order(BaseModel):
             return db.fetch(
                 """
                     WITH selected_images AS (
-                        SELECT oi.order_id AS order_id, COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
+                        SELECT 
+                            oi.order_id AS order_id, 
+                            COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
                         FROM orders_images oi 
-                        LEFT JOIN images i ON oi.image_id = i.id 
+                        LEFT JOIN images i 
+                            ON oi.image_id = i.id 
                         GROUP BY oi.order_id
                     )
-                    SELECT o.id AS id, name, description, customer_id, performer_id, si.images_links AS images_links
+                    SELECT 
+                        o.id AS id, 
+                        name, 
+                        description, 
+                        customer_id, 
+                        performer_id, 
+                        si.images_links AS images_links
                     FROM orders o
-                    LEFT JOIN selected_images si ON o.id = si.order_id
+                    LEFT JOIN selected_images si 
+                        ON o.id = si.order_id
                     WHERE o.id = %s;
                 """,
                 (order_id,)
@@ -79,7 +113,8 @@ class Order(BaseModel):
             with db.connection.cursor() as cursor:
                 cursor.execute(
                     """
-                        INSERT INTO orders (name, description, customer_id)
+                        INSERT INTO orders 
+                            (name, description, customer_id)
                         VALUES (%s, %s, %s)
                         RETURNING id;
                     """,
@@ -101,7 +136,8 @@ class Order(BaseModel):
 
                     cursor.execute(
                         """
-                            INSERT INTO orders_images (order_id, image_id, is_main)
+                            INSERT INTO orders_images 
+                                (order_id, image_id, is_main)
                             VALUES (%s, %s, %s)
                         """,
                         (order_id, image_id, True if counter == 1 else False),
@@ -111,14 +147,24 @@ class Order(BaseModel):
             return db.fetch(
                 """
                     WITH selected_images AS (
-                        SELECT oi.order_id AS order_id, COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
+                        SELECT 
+                            oi.order_id AS order_id, 
+                            COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
                         FROM orders_images oi 
-                        LEFT JOIN images i ON oi.image_id = i.id 
+                        LEFT JOIN images i 
+                            ON oi.image_id = i.id 
                         GROUP BY oi.order_id
                     )
-                    SELECT o.id AS id, name, description, customer_id, performer_id, COALESCE(si.images_links, '{}') AS images_links
+                    SELECT 
+                        o.id AS id, 
+                        name, 
+                        description, 
+                        customer_id, 
+                        performer_id, 
+                        COALESCE(si.images_links, '{}') AS images_links
                     FROM orders o
-                    LEFT JOIN selected_images si ON o.id = si.order_id
+                    LEFT JOIN selected_images si 
+                        ON o.id = si.order_id
                     WHERE o.id = %s;
                 """,
                 (order_id,)
@@ -155,7 +201,8 @@ class Order(BaseModel):
 
                         cursor.execute(
                             """
-                                INSERT INTO orders_images (order_id, image_id, is_main)
+                                INSERT INTO orders_images 
+                                    (order_id, image_id, is_main)
                                 VALUES (%s, %s, %s)
                             """,
                             (order_id, image_id, True if counter else False),
@@ -183,14 +230,24 @@ class Order(BaseModel):
                 cursor.execute(
                     """
                         WITH selected_images AS (
-                            SELECT oi.order_id AS order_id, COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
+                            SELECT 
+                                oi.order_id AS order_id, 
+                                COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
                             FROM orders_images oi 
-                            LEFT JOIN images i ON oi.image_id = i.id 
+                            LEFT JOIN images i 
+                                ON oi.image_id = i.id 
                             GROUP BY oi.order_id
                         )
-                        SELECT o.id AS id, name, description, customer_id, performer_id, COALESCE(si.images_links, '{}') AS images_links
+                        SELECT 
+                            o.id AS id, 
+                            name, 
+                            description, 
+                            customer_id, 
+                            performer_id, 
+                            COALESCE(si.images_links, '{}') AS images_links
                         FROM orders o
-                        LEFT JOIN selected_images si ON o.id = si.order_id
+                        LEFT JOIN selected_images si 
+                            ON o.id = si.order_id
                         WHERE o.id = %s;
                     """,
                     (order_id,)
