@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, Callable
+from typing import Callable
 import json
 
 from server.app.utils.redis_client import redis_client
