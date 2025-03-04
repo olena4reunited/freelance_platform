@@ -30,7 +30,7 @@ def add_payment_details(
     return PaymentController.create_payment(
             user["id"],
             str(payment_data.payment)
-        )
+    )
 
 
 @router.get("/me/list", response_model=Union[list[PaymentResponse], PaymentResponse])
@@ -69,7 +69,6 @@ def delete_payment(
     .validate_payment_ownership(user["id"])
 
     PaymentController.delete_payment(payment_id)
-    return
 
 
 @router.get("/list", response_model=Union[list[PaymentResponseExtended], PaymentResponseExtended])
@@ -102,7 +101,10 @@ def get_user_payment_details(
         payment_id: int,
         user: dict[str, Any] = Depends(get_current_user)
 ):
-    return PaymentController.get_user_payment_details(user_id, payment_id)
+    PaymentValidator(payment_id=payment_id) \
+    .validate_payment_ownership(user_id)
+
+    return PaymentController.get_user_payment_details(payment_id)
 
 
 @router.delete("/{user_id}/list/{payment_id}", status_code=204)

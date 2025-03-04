@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -46,8 +47,8 @@ def decrypt_data(encrypted_data: bytes) -> bytes:
     return decrypted_data
 
 
-def get_masked_payment(encrypted_data: memoryview) -> str:
-    decrypted_data = decrypt_data(encrypted_data.tobytes()).decode("utf-8")
-    masked_payment = "****" * 3 + decrypted_data[-4:]
+def get_masked_payment(payment: dict[str, Any]) -> dict[str, Any]:
+    decrypted_data = decrypt_data(payment.get("payment").tobytes()).decode("utf-8")
+    payment["payment"] = "****" * 3 + decrypted_data[-4:]
 
-    return masked_payment
+    return payment

@@ -8,6 +8,18 @@ class Payment(BaseModel):
     table_name = "payments"
 
     @staticmethod
+    def create_payment(user_id: int, payment: bytes) -> dict[str, Any]:
+        with PostgresDatabase(on_commit=True) as db:
+            return db.fetch(
+                """
+                    INSERT INTO payments (user_id, payment)
+                    VALUES (%s, %s)
+                    RETURNING id, payment 
+                """,
+                (user_id, payment)
+            )
+
+    @staticmethod
     def get_payments_by_user(user_id: int) -> list[dict[str, Any]]:
         with PostgresDatabase() as db:
             return db.fetch(
@@ -16,15 +28,4 @@ class Payment(BaseModel):
                 """,
                 (user_id, ),
                 is_all=True
-            )
-
-    @staticmethod
-    def create_payment(user_id: int, payment_data: bytes) -> None:
-        with PostgresDatabase(on_commit=True) as db:
-            db.execute_query(
-                """
-                    INSERT INTO payments (user_id, payment)
-                    VALUES (%s, %s);
-                """,
-                (user_id, payment_data)
             )
