@@ -12,23 +12,6 @@ class OrderCustomerValidator:
         self.customer_id = customer_id
         self.order_id = order_id
 
-    def validate_customer(self):
-        customer = User.get_record_by_id(self.customer_id)
-
-        if not customer:
-            GlobalException.CustomHTTPException.raise_exception(
-                status_code=400,
-                detail="Customer not found",
-                extra={"customer_id": self.customer_id},
-            )
-        if customer.get("is_blocked"):
-            GlobalException.CustomHTTPException.raise_exception(
-                status_code=403,
-                detail="Customer is blocked",
-                extra={"customer_id": self.customer_id, "blocked_until": customer.get("block_expired", None)},
-            )
-        return self
-
     def validate_order(self):
         order = Order.get_record_by_id(self.order_id)
 
@@ -61,23 +44,6 @@ class OrderPerformerValidator:
     ):
         self.performer_id = performer_id
         self.order_id = order_id
-
-    def validate_performer(self):
-        performer = User.get_record_by_id(self.performer_id)
-
-        if not performer:
-            GlobalException.CustomHTTPException.raise_exception(
-                status_code=400,
-                detail="Performer not found",
-                extra={"performer_id": self.performer_id},
-            )
-        if performer.get("is_blocked"):
-            GlobalException.CustomHTTPException.raise_exception(
-                status_code=403,
-                detail="Performer is blocked",
-                extra={"performer_id": self.performer_id, "block_expired": performer.get("block_expired", None)}
-            )
-        return self
 
     def validate_order(self):
         order = Order.get_record_by_id(self.order_id)

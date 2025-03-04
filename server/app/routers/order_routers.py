@@ -40,9 +40,6 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 @required_plans(["customer"])
 @required_permissions(["read_own_orders"])
 def get_order_list(user: dict[str, Any] = Depends(get_current_user)):
-    OrderCustomerValidator(user.get("id")) \
-    .validate_customer()
-
     return OrderCustomerController.get_all_customer_orders(user.get("id"))
 
 
@@ -51,9 +48,6 @@ def get_order_list(user: dict[str, Any] = Depends(get_current_user)):
 @required_plans(["customer"])
 @required_permissions(["read_own_orders", "read_own_orders_performers"])
 def get_order_list_performers(user: dict[str, Any] = Depends(get_current_user)):
-    OrderCustomerValidator(user.get("id")) \
-    .validate_customer()
-
     return OrderCustomerController.get_all_customer_performers(user.get("id"))
 
 
@@ -66,10 +60,9 @@ def get_order_list(
         user: dict[str, Any] = Depends(get_current_user)
 ):
     OrderCustomerValidator(customer_id=user.get("id"), order_id=order_id) \
-    .validate_customer()\
     .validate_order()
 
-    return OrderCustomerController.get_single_customer_order(order_id)
+    return OrderCustomerController.get_order_details(order_id)
 
 
 @router.post("/customer/me", response_model=OrderSingleResponse)
@@ -80,13 +73,10 @@ def create_order(
         order_data: OrderCreate,
         user: dict[str, Any] = Depends(get_current_user)
 ):
-    OrderCustomerValidator(user.get("id")) \
-    .validate_customer()
-
-    order_dict = order_data.model_dump()
-    order_dict["customer_id"] = user.get("id")
-
-    return OrderCustomerController.create_order(order_dict)
+    return OrderCustomerController.create_order(
+        order_data=order_data.model_dump(),
+        customer_id=user.get("id")
+    )
 
 
 @router.patch("/customer/me/list/{order_id}", response_model=OrderSingleResponse)
@@ -99,7 +89,6 @@ def update_order(
         user: dict[str, Any] = Depends(get_current_user),
 ):
     OrderCustomerValidator(customer_id=user.get("id"), order_id=order_id) \
-    .validate_customer() \
     .validate_order()
 
     return OrderCustomerController.update_order(order_id, updated_order_data.model_dump())
@@ -114,7 +103,6 @@ def delete_order(
         user: dict[str, Any] = Depends(get_current_user),
 ):
     OrderCustomerValidator(customer_id=user.get("id"), order_id=order_id) \
-    .validate_customer() \
     .validate_order()
 
     OrderCustomerController.delete_order(order_id)
@@ -130,9 +118,6 @@ def get_all_unassigned_orders(
         page: int = Query(1, description="pagination"),
         user: dict[str, Any] = Depends(get_current_user)
 ):
-    OrderPerformerValidator(user.get("id")) \
-    .validate_performer()
-
     return OrderPerformerController.get_orders(limit=limit, page=page)
 
 
@@ -145,7 +130,6 @@ def assign_themself_to_order(
         user: dict[str, Any] = Depends(get_current_user)
 ):
     OrderPerformerValidator(performer_id=user.get("id"), order_id=order_id) \
-    .validate_performer() \
     .validate_order()
 
     return OrderPerformerController.assign_to_the_order(order_id=order_id, performer_id=user.get("id"))
@@ -158,9 +142,6 @@ def assign_themself_to_order(
 def get_all_own_orders(
         user: dict[str, Any] = Depends(get_current_user)
 ):
-    OrderPerformerValidator(performer_id=user.get("id")) \
-    .validate_performer()
-
     return OrderPerformerController.get_assigned_orders(performer_id=user.get("id"))
 
 
@@ -171,9 +152,6 @@ def get_all_own_orders(
 def get_all_assigned_orders_customers(
         user: dict[str, Any] = Depends(get_current_user)
 ):
-    OrderPerformerValidator(performer_id=user.get("id")) \
-    .validate_performer()
-
     return OrderPerformerController.get_all_performer_customers(performer_id=user.get("id"))
 
 
