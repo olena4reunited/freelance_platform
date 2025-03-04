@@ -70,7 +70,7 @@ async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, 
 
 @handle_jwt_errors
 def required_plans(allowed_plans: list[str]):
-    def decorator(func):
+    def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
             plan_name = user["plan_name"]
@@ -93,7 +93,7 @@ def required_plans(allowed_plans: list[str]):
 
 
 def required_permissions(permissions: list[str]):
-    def decorator(func):
+    def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
             plan_name = user["plan_name"]
