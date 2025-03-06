@@ -205,9 +205,9 @@ class Order(BaseModel):
                                     (order_id, image_id, is_main)
                                 VALUES (%s, %s, %s)
                             """,
-                            (order_id, image_id, True if counter else False),
+                            (order_id, image_id, True if counter == 1 else False),
                         )
-                        del counter
+                        counter += 1
 
                 order_data.pop("images_links", None)
 
