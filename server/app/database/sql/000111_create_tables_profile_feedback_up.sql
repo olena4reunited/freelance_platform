@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users_profile_feedbacks (
 	id SERIAL PRIMARY KEY,
 	content VARCHAR(2000),
 	rate SMALLINT CHECK (rate BETWEEN 0 AND 5) DEFAULT 0,
-	commentator_id INTEGER ,
+	commentator_id INTEGER,
 	profile_id INTEGER NOT NULL,
 	FOREIGN KEY (commentator_id) REFERENCES users(id) ON DELETE SET NULL,
 	FOREIGN KEY (profile_id) REFERENCES users(id) ON DELETE CASCADE
