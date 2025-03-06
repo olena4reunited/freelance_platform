@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -5,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+from server.app.services.chat_service import sio
 from server.app.database.database import PostgresDatabase
 from server.app.routers.user_routers import router as user_router
 from server.app.routers.admin_routers import router as admin_router
@@ -46,7 +48,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
+app.mount("/", sio)
 
 app.add_middleware(
     CORSMiddleware,
@@ -69,4 +71,4 @@ app.include_router(profile_router)
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="localhost", port=8000, reload=True)
