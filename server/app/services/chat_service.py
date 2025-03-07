@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime
 
 import socketio
@@ -159,6 +160,5 @@ async def send_message(sid, data):
                     SET messages = messages || %s::jsonb
                     WHERE id = %s
                 """,
-                (message, chat_id)
+                (json.dumps(message, indent=2), chat_id)
             )
-
