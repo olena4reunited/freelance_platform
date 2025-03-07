@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 import socketio
 
@@ -147,7 +148,7 @@ async def send_message(sid, data):
     message = {
         "sender_id": user.get("id"),
         "content": content,
-        "created_at": datetime.datetime.utcnow(),
+        "created_at": datetime.now()
     }
 
     with PostgresDatabase() as db:
