@@ -1,10 +1,10 @@
-import asyncio
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.exceptions import ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
+import socketio
 
 from server.app.services.chat_service import sio
 from server.app.database.database import PostgresDatabase
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.mount("/", sio)
+app.mount("/", socketio.ASGIApp(sio))
 
 app.add_middleware(
     CORSMiddleware,
