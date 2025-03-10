@@ -42,8 +42,8 @@ class UserResponse(BaseModel):
     phone_number: str
     photo_link: str | None
     description: str | None
-    balance: condecimal(max_digits=10, decimal_places=2) | None
-    rating: conint(ge=0, le=5) | None
+    balance: Annotated[Decimal, Field(strict=True, max_digits=10, decimal_places=2)] | None
+    rating: Annotated[int, Field(strict=True, ge=0, le=5)] | None
     plan_name: str
 
 
