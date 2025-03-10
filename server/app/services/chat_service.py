@@ -19,8 +19,11 @@ sio = socketio.AsyncServer(
 
 @sio.event
 async def connect(sid, environ, auth):
-    headers = environ["asgi.scope"]["headers"]
-    auth_headers = next((h for h in headers if h[0] == b"Authorization"), None)
+    print(auth)
+    print(environ)
+    print(sid)
+    headers = dict(environ["asgi.scope"]["headers"])
+    auth_headers = next((v for k, v in headers.items() if k == "Authorization"), None)
 
     if not auth_headers:
         return False
@@ -36,7 +39,7 @@ async def connect(sid, environ, auth):
 async def create_chat(sid, data):
     session = await sio.get_session(sid)
     sender = session.get("user")
-    receiver_id = data.get("receiver_id")
+    receiver_id = data["receiver_id"]
 
     with PostgresDatabase() as db:
         with db.connection.cursor() as cursor:
@@ -69,13 +72,15 @@ async def create_chat(sid, data):
                     },
                     to=sid,
                 )
+                return
 
             cursor.execute(
                 """
                     SELECT id
                     FROM orders
                     WHERE customer_id = %s AND performer_id = %s
-                """
+                """,
+                (customer_id, performer_id)
             )
             if not cursor.fetchone():
                 await sio.emit(
@@ -86,13 +91,15 @@ async def create_chat(sid, data):
                     },
                     to=sid,
                 )
+                return
 
             cursor.execute(
                 """
                     SELECT id
                     FROM chats
                     WHERE customer_id = %s AND performer_id = %s
-                """
+                """,
+                (customer_id, performer_id)
             )
             if cursor.fetchone():
                 await sio.emit(
@@ -103,6 +110,7 @@ async def create_chat(sid, data):
                     },
                     to=sid,
                 )
+                return
 
             cursor.execute(
                 """
@@ -112,9 +120,23 @@ async def create_chat(sid, data):
                 """,
                 (customer_id, performer_id, "[]")
             )
-            chat_id = cursor.fetchone().get("id")
+            chat_row = cursor.fetchone()
+        
+        chat_id = chat_row[0] if chat_row else -1
 
-        await sio.emit("chat_created", {"chat_id": chat_id}, to=sid)
+        if chat_id == -1:
+            await sio.emit(
+                "error",
+                {
+                    "status_code": 400,
+                    "detail": "Chat creation failed",
+                },
+                to=sid,
+            )
+            return
+        
+        await sio.enter_room(sid, room=f"chat_{chat_id}")
+        await sio.emit("chat_created", {"chat_id": chat_id}, room=f"chat_{chat_id}")
 
 
 @sio.event
@@ -141,15 +163,15 @@ async def join_chat(sid, data):
 
 @sio.event
 async def send_message(sid, data):
-    chat_id = data.get("chat_id")
+    chat_id = data["chat_id"]
     session = await sio.get_session(sid)
-    user = session.get("user")
-    content = data.get("content")
+    user = session["user"]
+    content = data["content"]
 
     message = {
-        "sender_id": user.get("id"),
+        "sender_id": user["id"],
         "content": content,
-        "created_at": datetime.now()
+        "created_at": datetime.now().isoformat()
     }
 
     with PostgresDatabase() as db:
@@ -160,5 +182,37 @@ async def send_message(sid, data):
                     SET messages = messages || %s::jsonb
                     WHERE id = %s
                 """,
-                (json.dumps(message, indent=2), chat_id)
+                (json.dumps([message], indent=2), chat_id)
             )
+
+    await sio.emit("receive_message", message, room=f"chat_{chat_id}")
+
+
+@sio.event
+async def disconnect(sid):
+    session = await sio.get_session(sid)
+    user = session.get("user") if session else None
+
+    if not user:
+        return
+
+    user_id = user.get("id")
+
+    with PostgresDatabase() as db:
+        with db.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id FROM chats 
+                WHERE customer_id = %s OR performer_id = %s
+                """,
+                (user_id, user_id)
+            )
+            chat_ids = [row[0] for row in cursor.fetchall()]
+    
+    for chat_id in chat_ids:
+        await sio.emit(
+            "user_disconnected",
+            {"user_id": user_id, "message": "User left the chat"},
+            room=f"chat_{chat_id}"
+        )
+        await sio.leave_room(sid, room=f"chat_{chat_id}")
