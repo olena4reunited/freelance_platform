@@ -1,4 +1,6 @@
-from pydantic import BaseModel, conint
+from typing import Annotated
+
+from pydantic import BaseModel, Field
 
 
 class CommentatorBase(BaseModel):

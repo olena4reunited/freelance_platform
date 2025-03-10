@@ -1,6 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
+from typing import Annotated
 
-from pydantic import BaseModel, condecimal, conint
+from pydantic import BaseModel, Field
 
 
 class UserCreate(BaseModel):

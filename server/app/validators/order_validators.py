@@ -1,5 +1,4 @@
 from server.app.models.order_model import Order
-from server.app.models.user_model import User
 from server.app.utils.exceptions import GlobalException
 
 
