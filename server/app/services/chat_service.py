@@ -4,9 +4,9 @@ from datetime import datetime
 
 import socketio
 
-from server.app.utils.dependencies.dependencies import get_current_user
 from server.app.database.database import PostgresDatabase
-from server.app.utils.exceptions import GlobalException
+from server.app.controllers.user_controller import UserController
+from server.app.utils.auth import verify_token
 
 
 sio = socketio.AsyncServer(
@@ -19,17 +19,45 @@ sio = socketio.AsyncServer(
 
 @sio.event
 async def connect(sid, environ, auth):
-    print(auth)
-    print(environ)
-    print(sid)
-    headers = dict(environ["asgi.scope"]["headers"])
-    auth_headers = next((v for k, v in headers.items() if k == "Authorization"), None)
-
-    if not auth_headers:
+    try:
+        headers = {k.decode("utf-8"): v for k, v in environ["asgi.scope"]["headers"]}
+        auth_headers = headers.get("authorization")
+    except Exception as e:
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": str(e),
+            },
+            to=sid,
+        )
         return False
 
-    token = auth_headers[1].decode("utf-8").split(" ")[1]
-    user = await get_current_user(token)
+    if not auth_headers:
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": "Authorization header is missing",
+            },
+            to=sid,
+        )
+        return False
+
+    try:
+        token = auth_headers.decode("utf-8").split(" ")[1]
+        verify_token(token)
+        user = UserController.get_user_by_token(token)
+    except Exception as e:
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": str(e),
+            },
+            to=sid,
+        ) 
+        return False
 
     await sio.save_session(sid, {"user": user})
     return True
@@ -38,87 +66,83 @@ async def connect(sid, environ, auth):
 @sio.event
 async def create_chat(sid, data):
     session = await sio.get_session(sid)
+
+    if not session:
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": "Session is not found",
+            },
+            to=sid,
+        )
+
     sender = session.get("user")
     receiver_id = data["receiver_id"]
 
-    with PostgresDatabase() as db:
+    if not receiver_id:
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": "Receiver id is missing",
+            }
+        )
+
+    with PostgresDatabase(on_commit=True) as db:
         with db.connection.cursor() as cursor:
-            cursor.execute(
-                """
-                    WITH selected_user_plan AS (
-                        SELECT plan_id
-                        FROM users
-                        WHERE id = %s
-                    )
-                    SELECT pln.name AS name
-                    FROM plans pln
-                    JOIN selected_user_plan sup
-                        ON sup.plan_id = pln.id
-                """,
-                (receiver_id,)
-            )
-            receiver_plan = cursor.fetchone()[0]
-
-            if (sender.get("plan_name"), receiver_plan) == ("customer", "performer"):
-                customer_id, performer_id = sender.get("id"), receiver_id
-            elif (sender.get("plan_name"), receiver_plan) == ("performer", "customer"):
-                customer_id, performer_id = receiver_id, sender.get("id")
-            else:
-                await sio.emit(
-                    "error",
-                    {
-                        "status_code": 403,
-                        "detail": "You cannot start a chat with selected user",
-                    },
-                    to=sid,
-                )
-                return
-
-            cursor.execute(
-                """
-                    SELECT id
-                    FROM orders
-                    WHERE customer_id = %s AND performer_id = %s
-                """,
-                (customer_id, performer_id)
-            )
-            if not cursor.fetchone():
-                await sio.emit(
-                    "error",
-                    {
-                        "status_code": 403,
-                        "detail": "You and selected user aren't joined by the order",
-                    },
-                    to=sid,
-                )
-                return
+            sender_id = sender.get("id")
+            sender_plan = sender.get("plan_name")
 
             cursor.execute(
                 """
                     SELECT id
                     FROM chats
-                    WHERE customer_id = %s AND performer_id = %s
+                    WHERE (user_one_id = %s AND user_two_id = %s)
+                        OR (user_one_id = %s AND user_two_id = %s)
                 """,
-                (customer_id, performer_id)
+                (sender_id, receiver_id, receiver_id, sender_id)
             )
-            if cursor.fetchone():
+            chat_id = cursor.fetchone()[0] if cursor.fetchone() else None
+            
+            if chat_id:
                 await sio.emit(
-                    "error",
+                    "info",
                     {
-                        "status_code": 400,
+                        "status": "error",
                         "detail": "Chat with selected user already exists",
                     },
                     to=sid,
                 )
-                return
+                await sio.enter_room(sid, room=f"chat_{chat_id}")
+
+            if sender_plan in ["customer", "performer"]:
+                cursor.execute(
+                    """
+                        SELECT id
+                        FROM orders
+                        WHERE (customer_id = %s AND performer_id = %s) 
+                            OR (customer_id = %s AND performer_id = %s) 
+                    """,
+                    (sender_id, receiver_id, receiver_id, sender_id)
+                )
+                if not cursor.fetchone():
+                    await sio.emit(
+                        "info",
+                        {
+                            "status": "error",
+                            "detail": "You and selected user aren't joined by order",
+                        },
+                        to=sid,
+                    )
 
             cursor.execute(
                 """
-                    INSERT INTO chats (customer_id, performer_id, messages)
+                    INSERT INTO chats (user_one_id, user_two_id, messages)
                     VALUES (%s, %s, %s)
                     RETURNING id;
                 """,
-                (customer_id, performer_id, "[]")
+                (sender_id, receiver_id, "[]")
             )
             chat_row = cursor.fetchone()
         
@@ -126,14 +150,13 @@ async def create_chat(sid, data):
 
         if chat_id == -1:
             await sio.emit(
-                "error",
+                "info",
                 {
-                    "status_code": 400,
+                    "status": "error",
                     "detail": "Chat creation failed",
                 },
                 to=sid,
             )
-            return
         
         await sio.enter_room(sid, room=f"chat_{chat_id}")
         await sio.emit("chat_created", {"chat_id": chat_id}, room=f"chat_{chat_id}")
@@ -141,11 +164,44 @@ async def create_chat(sid, data):
 
 @sio.event
 async def join_chat(sid, data):
+    session = await sio.get_session(sid)
+
+    if not session:
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": "Session is not found",
+            },
+            to=sid,
+        )
+
+    user = session.get("user")
+    user_id = user.get("id")    
+
     chat_id = data.get("chat_id")
-    await sio.enter_room(sid, room=f"chat_{chat_id}")
 
     with PostgresDatabase() as db:
         with db.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT 1
+                    FROM chats
+                    WHERE id = %s AND (user_one_id = %s OR user_two_id = %s)
+                """,
+                (chat_id, user_id, user_id)
+            )
+            
+            if not cursor.fetchone():
+                await sio.emit(
+                    "info",
+                    {
+                        "status": "error",
+                        "detail": "Chat not found or user is not a member",
+                    },
+                    to=sid,
+                )
+
             cursor.execute(
                 """
                     SELECT messages
@@ -156,26 +212,59 @@ async def join_chat(sid, data):
             )
             chat = cursor.fetchone()
 
-            if chat:
-                messages = chat[0]
-                await sio.emit("chat_history", {"messages": messages}, to=sid)
+    await sio.enter_room(sid, room=f"chat_{chat_id}")
+
+    messages = chat[0] if chat else []
+
+    await sio.emit("chat_history", {"messages": messages}, to=sid)
 
 
 @sio.event
 async def send_message(sid, data):
-    chat_id = data["chat_id"]
     session = await sio.get_session(sid)
+
+    if not session:
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": "Session is not found",
+            },
+            to=sid,
+        )
+
     user = session["user"]
-    content = data["content"]
+    user_id = user.get("id")
+    chat_id = data.get("chat_id")
+    content = data.get("content")
 
     message = {
-        "sender_id": user["id"],
+        "sender_id": user_id,
         "content": content,
         "created_at": datetime.now().isoformat()
     }
 
-    with PostgresDatabase() as db:
+    with PostgresDatabase(on_commit=True) as db:
         with db.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT 1
+                    FROM chats
+                    WHERE id = %s AND (user_one_id = %s OR user_two_id = %s)
+                """,
+                (chat_id, user_id, user_id)
+            )
+            
+            if not cursor.fetchone():
+                await sio.emit(
+                    "info",
+                    {
+                        "status": "error",
+                        "detail": "Chat not found or user is not a member",
+                    },
+                    to=sid,
+                )
+    
             cursor.execute(
                 """
                     UPDATE chats
@@ -194,7 +283,14 @@ async def disconnect(sid):
     user = session.get("user") if session else None
 
     if not user:
-        return
+        await sio.emit(
+            "info",
+            {
+                "status": "error",
+                "detail": "Session is not found",
+            },
+            to=sid,
+        )
 
     user_id = user.get("id")
 
@@ -203,7 +299,7 @@ async def disconnect(sid):
             cursor.execute(
                 """
                 SELECT id FROM chats 
-                WHERE customer_id = %s OR performer_id = %s
+                WHERE user_one_id = %s OR user_two_id = %s
                 """,
                 (user_id, user_id)
             )

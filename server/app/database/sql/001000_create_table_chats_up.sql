@@ -2,11 +2,11 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS chats (
 	id SERIAL PRIMARY KEY,
-	customer_id INTEGER NOT NULL,
-	performer_id INTEGER NOT NULL,
+	user_one_id INTEGER NOT NULL,
+	user_two_id INTEGER NOT NULL,
 	messages JSONB DEFAULT '[]',
-	FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE SET NULL,
-	FOREIGN KEY (performer_id) REFERENCES users(id) ON DELETE SET NULL
+	FOREIGN KEY (user_one_id) REFERENCES users(id) ON DELETE SET NULL,
+	FOREIGN KEY (user_two_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 COMMIT;

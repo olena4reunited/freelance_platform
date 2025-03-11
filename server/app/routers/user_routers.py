@@ -71,7 +71,6 @@ def create_user_token(user_data: UserCreateToken):
         username=user_data.username,
         password=user_data.password) \
     .validate_user_exists()
-    print(user_data.model_dump())
 
     return UserController.authenticate_user(user_data.model_dump())
 

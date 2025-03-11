@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
 
 
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,7 +62,7 @@ app.add_middleware(
 app.add_exception_handler(GlobalException, global_exception_handler)
 app.add_exception_handler(ResponseValidationError, response_validation_exception_handler)
 
-app.add_route("/ws", socketio.ASGIApp(sio))
+app.mount("/socket.io", socketio.ASGIApp(sio))
 
 app.include_router(user_router)
 app.include_router(admin_router)
