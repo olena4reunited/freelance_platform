@@ -76,6 +76,7 @@ async def create_chat(sid, data):
             },
             to=sid,
         )
+        return
 
     sender = session.get("user")
     receiver_id = data["receiver_id"]
@@ -88,6 +89,7 @@ async def create_chat(sid, data):
                 "detail": "Receiver id is missing",
             }
         )
+        return
 
     with PostgresDatabase(on_commit=True) as db:
         with db.connection.cursor() as cursor:
@@ -135,6 +137,7 @@ async def create_chat(sid, data):
                         },
                         to=sid,
                     )
+                    return
 
             cursor.execute(
                 """
@@ -157,6 +160,7 @@ async def create_chat(sid, data):
                 },
                 to=sid,
             )
+            return
         
         await sio.enter_room(sid, room=f"chat_{chat_id}")
         await sio.emit("chat_created", {"chat_id": chat_id}, room=f"chat_{chat_id}")
@@ -175,6 +179,7 @@ async def join_chat(sid, data):
             },
             to=sid,
         )
+        return
 
     user = session.get("user")
     user_id = user.get("id")    
@@ -201,6 +206,7 @@ async def join_chat(sid, data):
                     },
                     to=sid,
                 )
+                return
 
             cursor.execute(
                 """
@@ -232,6 +238,7 @@ async def send_message(sid, data):
             },
             to=sid,
         )
+        return
 
     user = session["user"]
     user_id = user.get("id")
@@ -264,6 +271,7 @@ async def send_message(sid, data):
                     },
                     to=sid,
                 )
+                return
     
             cursor.execute(
                 """
@@ -291,6 +299,7 @@ async def disconnect(sid):
             },
             to=sid,
         )
+        return
 
     user_id = user.get("id")
 
