@@ -1,6 +1,7 @@
-import asyncio
 import json
 from datetime import datetime
+from functools import wraps
+import traceback
 
 import socketio
 
@@ -17,59 +18,62 @@ sio = socketio.AsyncServer(
 )
 
 
+def handle_socketio_errors(func):
+    @wraps(func)
+    async def wrapper(sid, *args, **kwargs):
+        try:
+            await func(sid, *args, **kwargs)
+        except Exception as e:
+            traceback.print_exc()
+            await sio.emit(
+                "socketio_error",
+                {
+                    "status": "error",
+                    "detail": str(e),
+                },
+                to=sid
+            )
+            return
+    return wrapper
+
+
 @sio.event
-async def connect(sid, environ, auth):
-    try:
-        headers = {k.decode("utf-8"): v for k, v in environ["asgi.scope"]["headers"]}
-        auth_headers = headers.get("authorization")
-    except Exception as e:
-        await sio.emit(
-            "info",
-            {
-                "status": "error",
-                "detail": str(e),
-            },
-            to=sid,
-        )
-        return False
+@handle_socketio_errors
+async def connect(sid, environ,  *args, **kwargs):
+    headers = {k.decode("utf-8"): v for k, v in environ["asgi.scope"]["headers"]}
+    auth_headers = headers.get("authorization")
 
     if not auth_headers:
         await sio.emit(
-            "info",
+            "socketio_error",
             {
                 "status": "error",
                 "detail": "Authorization header is missing",
             },
             to=sid,
         )
-        return False
+        return
 
-    try:
-        token = auth_headers.decode("utf-8").split(" ")[1]
-        verify_token(token)
-        user = UserController.get_user_by_token(token)
-    except Exception as e:
-        await sio.emit(
-            "info",
-            {
-                "status": "error",
-                "detail": str(e),
-            },
-            to=sid,
-        ) 
-        return False
+    token = auth_headers.decode("utf-8").split(" ")[1]
+    verify_token(token)
+    user = UserController.get_user_by_token(token)
 
+    await sio.emit(
+        "user_connected",
+        {"user_id": user.get("id"), "message": "User connected"},
+        to=sid
+    )
     await sio.save_session(sid, {"user": user})
-    return True
 
 
 @sio.event
-async def create_chat(sid, data):
+@handle_socketio_errors
+async def create_chat(sid, data,  *args, **kwargs):
     session = await sio.get_session(sid)
-
+    
     if not session:
         await sio.emit(
-            "info",
+            "socketio_error",
             {
                 "status": "error",
                 "detail": "Session is not found",
@@ -80,10 +84,10 @@ async def create_chat(sid, data):
 
     sender = session.get("user")
     receiver_id = data["receiver_id"]
-
+    
     if not receiver_id:
         await sio.emit(
-            "info",
+            "socketio_error",
             {
                 "status": "error",
                 "detail": "Receiver id is missing",
@@ -105,18 +109,19 @@ async def create_chat(sid, data):
                 """,
                 (sender_id, receiver_id, receiver_id, sender_id)
             )
-            chat_id = cursor.fetchone()[0] if cursor.fetchone() else None
-            
+            chat_id = cursor.fetchone()
+
             if chat_id:
+                await sio.enter_room(sid, room=f"chat_{chat_id}")
                 await sio.emit(
-                    "info",
+                    "socketio_error",
                     {
                         "status": "error",
                         "detail": "Chat with selected user already exists",
                     },
                     to=sid,
                 )
-                await sio.enter_room(sid, room=f"chat_{chat_id}")
+                return
 
             if sender_plan in ["customer", "performer"]:
                 cursor.execute(
@@ -130,7 +135,7 @@ async def create_chat(sid, data):
                 )
                 if not cursor.fetchone():
                     await sio.emit(
-                        "info",
+                        "socketio_error",
                         {
                             "status": "error",
                             "detail": "You and selected user aren't joined by order",
@@ -147,13 +152,11 @@ async def create_chat(sid, data):
                 """,
                 (sender_id, receiver_id, "[]")
             )
-            chat_row = cursor.fetchone()
+            chat_id = cursor.fetchone()[0]
         
-        chat_id = chat_row[0] if chat_row else -1
-
-        if chat_id == -1:
+        if not chat_id:
             await sio.emit(
-                "info",
+                "socketio_error",
                 {
                     "status": "error",
                     "detail": "Chat creation failed",
@@ -167,12 +170,13 @@ async def create_chat(sid, data):
 
 
 @sio.event
-async def join_chat(sid, data):
+@handle_socketio_errors
+async def join_chat(sid, data,  *args, **kwargs):
     session = await sio.get_session(sid)
 
     if not session:
         await sio.emit(
-            "info",
+            "socketio_error",
             {
                 "status": "error",
                 "detail": "Session is not found",
@@ -199,7 +203,7 @@ async def join_chat(sid, data):
             
             if not cursor.fetchone():
                 await sio.emit(
-                    "info",
+                    "socketio_error",
                     {
                         "status": "error",
                         "detail": "Chat not found or user is not a member",
@@ -226,12 +230,13 @@ async def join_chat(sid, data):
 
 
 @sio.event
-async def send_message(sid, data):
+@handle_socketio_errors
+async def send_message(sid, data,  *args, **kwargs):
     session = await sio.get_session(sid)
 
     if not session:
         await sio.emit(
-            "info",
+            "socketio_error",
             {
                 "status": "error",
                 "detail": "Session is not found",
@@ -240,10 +245,30 @@ async def send_message(sid, data):
         )
         return
 
-    user = session["user"]
-    user_id = user.get("id")
+    user_id = session.get("user").get("id")
     chat_id = data.get("chat_id")
     content = data.get("content")
+
+    if not chat_id:
+        await sio.emit(
+            "socketio_error",
+            {
+                "status": "error",
+                "detail": "Chat id is missing",
+            },
+            to=sid,
+        )
+        return
+    if content == None:
+        await sio.emit(
+            "socketio_error",
+            {
+                "status": "error",
+                "detail": "Message content is missing",
+            },
+            to=sid,
+        )
+        return
 
     message = {
         "sender_id": user_id,
@@ -264,7 +289,7 @@ async def send_message(sid, data):
             
             if not cursor.fetchone():
                 await sio.emit(
-                    "info",
+                    "socketio_error",
                     {
                         "status": "error",
                         "detail": "Chat not found or user is not a member",
@@ -282,17 +307,18 @@ async def send_message(sid, data):
                 (json.dumps([message], indent=2), chat_id)
             )
 
-    await sio.emit("receive_message", message, room=f"chat_{chat_id}")
+    await sio.emit("sent_message", message, room=f"chat_{chat_id}")
 
 
 @sio.event
-async def disconnect(sid):
+@handle_socketio_errors
+async def disconnect(sid, *args, **kwargs):
     session = await sio.get_session(sid)
-    user = session.get("user") if session else None
+    user = session.get("user")
 
     if not user:
         await sio.emit(
-            "info",
+            "socketio_error",
             {
                 "status": "error",
                 "detail": "Session is not found",
