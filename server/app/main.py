@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 
 import uvicorn
 from fastapi import FastAPI
@@ -42,10 +43,12 @@ async def lifespan(app: FastAPI):
                 """
             )
 
-    yield
+    try:
+        yield
+    except asyncio.CancelledError:
+        pass
 
     redis_client.flushall()
-
 
 
 app = FastAPI(lifespan=lifespan)

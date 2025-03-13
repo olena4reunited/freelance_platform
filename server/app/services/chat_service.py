@@ -33,6 +33,7 @@ def handle_socketio_errors(func):
                 },
                 to=sid
             )
+            await sio.disconnect(sid)
             return
     return wrapper
 
@@ -52,12 +53,13 @@ async def connect(sid, environ,  *args, **kwargs):
             },
             to=sid,
         )
+        await sio.disconnect(sid)
         return
 
     token = auth_headers.decode("utf-8").split(" ")[1]
     verify_token(token)
     user = UserController.get_user_by_token(token)
-
+    
     await sio.emit(
         "user_connected",
         {"user_id": user.get("id"), "message": "User connected"},
@@ -80,6 +82,7 @@ async def create_chat(sid, data,  *args, **kwargs):
             },
             to=sid,
         )
+        await sio.disconnect(sid)
         return
 
     sender = session.get("user")
@@ -93,6 +96,7 @@ async def create_chat(sid, data,  *args, **kwargs):
                 "detail": "Receiver id is missing",
             }
         )
+        await sio.disconnect(sid)
         return
 
     with PostgresDatabase(on_commit=True) as db:
@@ -142,6 +146,7 @@ async def create_chat(sid, data,  *args, **kwargs):
                         },
                         to=sid,
                     )
+                    await sio.disconnect(sid)
                     return
 
             cursor.execute(
