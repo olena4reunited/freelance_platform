@@ -7,6 +7,7 @@ from psycopg2.errors import DatabaseError, OperationalError, IntegrityError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+
 class GlobalException(Exception):
     @classmethod
     def catcher(cls, func: Callable) -> Callable:
