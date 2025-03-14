@@ -30,6 +30,7 @@ from server.app.utils.dependencies.dependencies import (
     required_plans,
     required_permissions
 )
+from server.app.services.mqtt_service.mqtt_service import MQTTPub
 
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -73,10 +74,18 @@ def create_order(
         order_data: OrderCreate,
         user: dict[str, Any] = Depends(get_current_user)
 ):
-    return OrderCustomerController.create_order(
+    order = OrderCustomerController.create_order(
         order_data=order_data.model_dump(),
         customer_id=user.get("id")
     )
+
+    publisher = MQTTPub()
+    publisher.publish_new_order(
+        order_data=order,
+        user_data=user
+    )
+
+    return order
 
 
 @router.patch("/customer/me/list/{order_id}", response_model=OrderSingleResponse)

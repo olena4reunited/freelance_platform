@@ -1,0 +1,13 @@
+{
+    "mqtt_conn": {
+        "host": "localhost",
+        "port": 1883,
+        "keepalive": 60,
+        "username": "username",
+        "password": "password"
+    },
+    "mqtt_topic": {
+        "topic": "orders/new",
+        "qos": 0
+    }
+}
