@@ -4,20 +4,26 @@ import json
 
 import paho.mqtt.client as mqtt
 
+from server.app.utils.logger import logger
+from server.app.utils.operations import time_incrementing
+
+
+MAX_ATTEMPTS = 5
+
 
 def load_config():
     with open("server/app/services/mqtt_service/config.json") as f:
         return json.load(f)
+   
 
-
-class MQTTPub:
+class MQTTService:
     def __init__(self):
         conf = load_config()
 
         self.conn_config = conf["mqtt_conn"]
         self.topic = conf["mqtt_topic"]
 
-        client_id = f"server-pub-{int(time.time())}"
+        client_id = f"broker-mqtt-{int(time.time())}"
         self.client = mqtt.Client(client_id=client_id)
 
         self.client.username_pw_set(
@@ -27,7 +33,6 @@ class MQTTPub:
 
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
-        self.client.on_publish = self._on_publish
 
         self._connect()
         
@@ -42,23 +47,46 @@ class MQTTPub:
     
     def _on_connect(self, client, userdata, flags, reason_code):
         if reason_code == 0:
-            print("Connected succesfully")
+            logger.info(
+                "MQTT client-publisher was succesfully connected"
+            )
         else:
-            print(f"Connection error with rc: {reason_code}")
+            prev, sec = 0, 1
+            
+            for _ in range(0, MAX_ATTEMPTS, 1):
+                if self.client.is_connected():
+                    break
 
-            time.sleep(1)
-            self._connect()
+                logger.error(
+                    "Error in MQTT client-publisher connection. Trying to reconnect"
+                )
+                prev, sec = time_incrementing(prev, sec)
+                
+                time.sleep(sec)
+                self._connect()
+            
+            if not self.client.is_connected():
+                logger.critical(
+                    "Unsuccesfully finished \x1b[1m%s\x1b[0m attempts to process " \
+                    "MQTT client reconnection!",
+                    MAX_ATTEMPTS
+                )
 
     def _on_disconnect(self, client, userdata, reason_code):
-        print(f"Disconnected from MQTT broker with rc: {reason_code}")
-        
+        self.client.loop_stop()
+
+        logger.info(
+            "Disconnected client from MQTT broker with reason_code: \x1b[1m%s\x1b[0m",
+            reason_code
+        )
+
         if reason_code != 0:
-            time.sleep(2)
-            self._connect()
-    
-    def _on_publish(self, client, userdata, mid):
-        print(f"Message {mid} was successfully published")
-        
+            logger.critical(
+                "Error was ocured while client disconnection from MQTT broker! " \
+                "Disconnected with reason_code: \x1b[1m%s\x1b[0m",
+                reason_code
+            )
+
     def publish_new_order(
             self,
             order_data: dict[str, Any], 
@@ -78,11 +106,8 @@ class MQTTPub:
             "timestamp": time.time()
         }
 
-        print("Message: ", message, "\n")
-
         if not self.client.is_connected():
             self._connect()
-            time.sleep(1)
 
         res = self.client.publish(
             topic=self.topic["topic"], 
@@ -90,55 +115,25 @@ class MQTTPub:
             qos=self.topic["qos"]
         )
 
-        print("Result: ", res, "\n")
-
         if res.rc != 0:
+            logger.order(
+                "Error was ocured while publication orders/new to MQTT broker! " \
+                "Publication proceessin result reason_code: \x1b[1m%s\x1b[0m",
+                res.rc
+            )
             return False
-        return True
-    
-    def exit(self):
-        self.client.loop_stop()
-        self.client.disconnect()
-
-
-class MQTTSub:
-    def __init__(self, admin_user):
-        conf = load_config()
-
-        self.conn_config = conf["mqtt_conn"]
-        self.topic = conf["mqtt_topic"]
-        
-        client_id = f"admin-{admin_user['id']}-{int(time.time())}"
-        self.client = mqtt.Client(client_id=client_id)
-
-        self.client.username_pw_set(
-            username=f"admin-{admin_user['id']}",
-            password="password"
-        )
-
-        self._connect()
-
-        self.client.loop_forever()
-
-    def _connect(self):
-        self.client.connect(
-            self.conn_config["host"],
-            self.conn_config["port"],
-            self.conn_config["keepalive"]
-        )
-
-    def subscribe(self):
-        try:
-            if not self.client.is_connected():
-                self._connect()
-                time.sleep(1)
-
-            self.client.subscribe(self.topic["topic"], qos=self.topic["qos"])
-        
+        else:
+            logger.info(
+                "Client succesfully published new order to MQTT broker " \
+                "for clients-subscribers"
+            )
             return True
-        except Exception as e:
-            return False
 
-    def exit(self):
-        self.client.loop_stop()
-        self.client.disconnect()
+    def subscribe_on_orders(self):
+        if not self.client.is_connected():
+            self._connect()
+
+        self.client.subscribe(self.topic["topic"], qos=self.topic["qos"])
+ 
+
+mqtt = MQTTService()

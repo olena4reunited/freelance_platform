@@ -30,8 +30,7 @@ from server.app.utils.dependencies.dependencies import (
     required_plans,
     required_permissions
 )
-from server.app.services.mqtt_service.mqtt_service import MQTTPub
-
+from server.app.services.mqtt_service.mqtt_service import mqtt
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -79,8 +78,7 @@ def create_order(
         customer_id=user.get("id")
     )
 
-    publisher = MQTTPub()
-    publisher.publish_new_order(
+    mqtt.publish_new_order(
         order_data=order,
         user_data=user
     )
