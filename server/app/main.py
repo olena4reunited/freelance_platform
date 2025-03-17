@@ -15,6 +15,7 @@ from server.app.routers.payment_routers import router as payment_router
 from server.app.routers.order_routers import router as order_router
 from server.app.routers.profile_routers import router as profile_router
 from server.app.utils.redis_client import redis_client
+from server.app.utils.logger import logger
 from server.app.services.cache_permissions_service import load_permissions
 from server.app.utils.exceptions import (
     GlobalException,
@@ -26,29 +27,48 @@ from server.app.utils.exceptions import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_permissions()
-    with PostgresDatabase() as db:
+    logger.info("Loaded plans and permissions for key-value fast access")
+    
+    with PostgresDatabase(on_commit=True) as db:
         with db.connection.cursor() as cursor:
             cursor.execute(
                 """
                     UPDATE orders
                     SET is_blocked = FALSE, blocked_until = NULL
-                    WHERE CURRENT_DATE > blocked_until AND is_blocked = TRUE;
+                    WHERE CURRENT_DATE > blocked_until AND is_blocked = TRUE
+                    RETURNING id;
                 """
             )
+            ids = cursor.fetchall()
+
+            if ids:
+                logger.info("\x1b[1mAUTO CHECK ORDERS\x1b[0m: Orders with ids %s were unblocked", ids)
+            else:
+                logger.info("\x1b[1mAUTO CHECK ORDERS\x1b[0m: No orders to unblock")
+
             cursor.execute(
                 """
                     UPDATE users
                     SET is_blocked = FALSE, block_expired = NULL
-                    WHERE CURRENT_DATE > block_expired and is_blocked = TRUE;
+                    WHERE CURRENT_DATE > block_expired and is_blocked = TRUE
+                    RETURNING id;
                 """
             )
+            ids = cursor.fetchall()
+
+            if ids:
+                logger.info("\x1b[1mAUTO CHECK USERS\x1b[0m: Users with ids %s were unblocked", ids)
+            else:
+                logger.info("\x1b[1mAUTO CHECK USERS\x1b[0m: No users to unblock")
 
     try:
         yield
     except asyncio.CancelledError:
+        logger.error("Disconnected with error. Handle disconnection")
         pass
 
     redis_client.flushall()
+    logger.warning("Flush all plans and permissions from key-value fast access")
 
 
 app = FastAPI(lifespan=lifespan)
