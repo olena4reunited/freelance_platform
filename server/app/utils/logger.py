@@ -28,7 +28,6 @@ logger = logging.getLogger("server")
 logger.setLevel(logging.DEBUG)  
 
 handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
 
 handler.setFormatter(LoggerFormatter())
 
