@@ -2,19 +2,21 @@ import json
 from datetime import datetime
 from functools import wraps
 import traceback
+import logging
 
 import socketio
 
 from server.app.database.database import PostgresDatabase
 from server.app.controllers.user_controller import UserController
 from server.app.utils.auth import verify_token
+from server.app.utils.logger import logger
 
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
     cors_allowed_origins=["*"],
-    logger=True,
-    engineio_logger=True
+    logger=logger,
+    engineio_logger=logger
 )
 
 
@@ -24,7 +26,13 @@ def handle_socketio_errors(func):
         try:
             await func(sid, *args, **kwargs)
         except Exception as e:
-            traceback.print_exc()
+            logger.error(
+                "Error in socketio connection with sid \x1b[1m%s\1b[0m\n%s\x1b[31m" \
+                "ERROR TRACEBACK:\x1b[0m\n%s",
+                sid,
+                " "*10,
+                traceback.format_exc()
+            )
             await sio.emit(
                 "socketio_error",
                 {
@@ -52,6 +60,12 @@ async def connect(sid, environ,  *args, **kwargs):
                 "detail": "Authorization header is missing",
             },
             to=sid,
+        )
+        logger.error(
+            "Error while connect in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sAutohorization headers is missing. Could not create connection",
+            sid,
+            " "*10
         )
         await sio.disconnect(sid)
         return
@@ -82,6 +96,12 @@ async def create_chat(sid, data,  *args, **kwargs):
             },
             to=sid,
         )
+        logger.error(
+            "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sSession is not found or did not contain user information",
+            sid,
+            " "*10
+        )
         await sio.disconnect(sid)
         return
 
@@ -95,6 +115,14 @@ async def create_chat(sid, data,  *args, **kwargs):
                 "status": "error",
                 "detail": "Receiver id is missing",
             }
+        )
+        logger.error(
+            "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sCurrent user: id=%s trying to create chat with no receiver_id. " \
+            "Receiver_id should pe passed to succesful chat creation",
+            sid,
+            " "*10,
+            sender["id"]
         )
         await sio.disconnect(sid)
         return
@@ -125,6 +153,16 @@ async def create_chat(sid, data,  *args, **kwargs):
                     },
                     to=sid,
                 )
+                logger.warning(
+                    "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+                    "%sCurrent user: id=%s has already created chat with selected user: id=%s. " \
+                    "User will be joined to the chat: id=%s", 
+                    sid,
+                    " "*10,
+                    sender_id,
+                    receiver_id,
+                    chat_id[0]
+                )
                 return
 
             if sender_plan in ["customer", "performer"]:
@@ -145,6 +183,15 @@ async def create_chat(sid, data,  *args, **kwargs):
                             "detail": "You and selected user aren't joined by order",
                         },
                         to=sid,
+                    )
+                    logger.error(
+                        "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+                        "%sCurrent user: id=%s has are not joined by order with selected user: id=%s. " \
+                        "Chat creation with selected user is forbidden for current user.", 
+                        sid,
+                        " "*10,
+                        sender_id,
+                        receiver_id
                     )
                     await sio.disconnect(sid)
                     return
@@ -168,6 +215,15 @@ async def create_chat(sid, data,  *args, **kwargs):
                 },
                 to=sid,
             )
+            logger.error(
+                "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+                "%sCurrent user: id=%s was trying to create chat with selected user: id=%s " \
+                "but error was occured.", 
+                sid,
+                " "*10,
+                sender_id,
+                receiver_id
+            )
             return
         
         await sio.enter_room(sid, room=f"chat_{chat_id}")
@@ -187,6 +243,12 @@ async def join_chat(sid, data,  *args, **kwargs):
                 "detail": "Session is not found",
             },
             to=sid,
+        )
+        logger.error(
+            "Error while join_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sSession is not found or is not contain user information",
+            sid,
+            " "*10
         )
         return
 
@@ -214,6 +276,14 @@ async def join_chat(sid, data,  *args, **kwargs):
                         "detail": "Chat not found or user is not a member",
                     },
                     to=sid,
+                )
+                logger.error(
+                    "Error while join_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+                    "%sChat: id=%s was not found or user: id=%s is not a member",
+                    sid,
+                    " "*10,
+                    chat_id,
+                    user_id
                 )
                 return
 
@@ -248,6 +318,12 @@ async def send_message(sid, data,  *args, **kwargs):
             },
             to=sid,
         )
+        logger.error(
+            "Error while send_message in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sSession is not found or is not contain user information",
+            sid,
+            " "*10
+        )
         return
 
     user_id = session.get("user").get("id")
@@ -263,6 +339,14 @@ async def send_message(sid, data,  *args, **kwargs):
             },
             to=sid,
         )
+        logger.error(
+            "Error while send_message in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sUser: id=%s sent send_message request, but chat_id was not passed. " \
+            "chat_id should be passed for succesful send_message request processing",
+            sid,
+            " "*10,
+            user_id
+        )
         return
     if content == None:
         await sio.emit(
@@ -272,6 +356,14 @@ async def send_message(sid, data,  *args, **kwargs):
                 "detail": "Message content is missing",
             },
             to=sid,
+        )
+        logger.error(
+            "Error while send_message in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sUser: id=%s sent send_message request, but message contain no content. " \
+            "Content should be passed for succesful send_message request processing",
+            sid,
+            " "*10,
+            user_id
         )
         return
 
@@ -301,6 +393,15 @@ async def send_message(sid, data,  *args, **kwargs):
                     },
                     to=sid,
                 )
+                logger.error(
+                    "Error while send_message in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+                    "%sUser: id=%s sent send_message request to the chat: id=%s. " \
+                    "Request could not be processed becouse chat is not found or user is not a member.",
+                    sid,
+                    " "*10,
+                    user_id,
+                    chat_id
+                )
                 return
     
             cursor.execute(
@@ -319,9 +420,8 @@ async def send_message(sid, data,  *args, **kwargs):
 @handle_socketio_errors
 async def disconnect(sid, *args, **kwargs):
     session = await sio.get_session(sid)
-    user = session.get("user")
 
-    if not user:
+    if not session:
         await sio.emit(
             "socketio_error",
             {
@@ -330,9 +430,15 @@ async def disconnect(sid, *args, **kwargs):
             },
             to=sid,
         )
+        logger.error(
+            "Error while disconnect in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
+            "%sSession is not found or is not contain user information",
+            sid,
+            " "*10
+        )
         return
 
-    user_id = user.get("id")
+    user_id = session.get("user").get("id")
 
     with PostgresDatabase() as db:
         with db.connection.cursor() as cursor:

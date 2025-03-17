@@ -4,7 +4,7 @@ import logging
 class LoggerFormatter(logging.Formatter):
     COLORS = {
         "CRITICAL": "\x1b[1;31m",
-        "WARNING": "\x1b[1;33m",
+        "WARNING": "\x1b[33m",
         "ERROR": "\x1b[31m",
         "DEBUG": "\x1b[33m",
         "INFO": "\x1b[32m",
