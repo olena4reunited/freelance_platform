@@ -1,6 +1,7 @@
 from typing import Any
 import time
 import json
+import asyncio
 
 import paho.mqtt.client as mqtt
 
@@ -32,12 +33,13 @@ class MQTTService:
         )
 
         self.client.on_connect = self._on_connect
+        self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect
 
         self._connect()
-        
+
         self.client.loop_start()
-    
+
     def _connect(self):
         self.client.connect(
             self.conn_config["host"],
@@ -71,6 +73,14 @@ class MQTTService:
                     "MQTT client reconnection!",
                     MAX_ATTEMPTS
                 )
+    
+    def _on_message(self, client, userdata, message):
+        msg = json.loads(message.payload.decode())
+
+        logger.info(
+            'New order received:\n\x1b[1m%s\x1b[0m',
+            json.dumps(msg, indent=4, separators=(",", ": "))
+        )
 
     def _on_disconnect(self, client, userdata, reason_code):
         self.client.loop_stop()
@@ -106,9 +116,6 @@ class MQTTService:
             "timestamp": time.time()
         }
 
-        if not self.client.is_connected():
-            self._connect()
-
         res = self.client.publish(
             topic=self.topic["topic"], 
             payload=json.dumps(message),
@@ -116,7 +123,7 @@ class MQTTService:
         )
 
         if res.rc != 0:
-            logger.order(
+            logger.error(
                 "Error was ocured while publication orders/new to MQTT broker! " \
                 "Publication proceessin result reason_code: \x1b[1m%s\x1b[0m",
                 res.rc
@@ -129,11 +136,5 @@ class MQTTService:
             )
             return True
 
-    def subscribe_on_orders(self):
-        if not self.client.is_connected():
-            self._connect()
-
-        self.client.subscribe(self.topic["topic"], qos=self.topic["qos"])
- 
 
 mqtt = MQTTService()

@@ -17,7 +17,6 @@ from server.app.routers.profile_routers import router as profile_router
 from server.app.utils.redis_client import redis_client
 from server.app.utils.logger import logger
 from server.app.services.cache_permissions_service import load_permissions
-from server.app.services.mqtt_service.mqtt_service import mqtt
 from server.app.utils.exceptions import (
     GlobalException,
     global_exception_handler,
@@ -62,9 +61,9 @@ async def lifespan(app: FastAPI):
             else:
                 logger.info("\x1b[1mAUTO CHECK USERS\x1b[0m: No users to unblock")
 
+
     try:
         yield
-        mqtt.subscribe_on_orders()
     except asyncio.CancelledError:
         logger.error("Disconnected with error. Handle disconnection")
         pass
