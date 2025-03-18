@@ -28,7 +28,7 @@ from server.app.utils.exceptions import (
 async def lifespan(app: FastAPI):
     load_permissions()
     logger.info("Loaded plans and permissions for key-value fast access")
-    
+
     with PostgresDatabase(on_commit=True) as db:
         with db.connection.cursor() as cursor:
             cursor.execute(

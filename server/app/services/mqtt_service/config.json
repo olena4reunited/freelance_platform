@@ -3,8 +3,8 @@
         "host": "localhost",
         "port": 1883,
         "keepalive": 60,
-        "username": "username",
-        "password": "password"
+        "username": "admin",
+        "password": "secretpassword"
     },
     "mqtt_topic": {
         "topic": "orders/new",
