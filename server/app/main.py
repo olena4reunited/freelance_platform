@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.exceptions import ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 import socketio
 
 from server.app.services.chat_service import sio
@@ -74,6 +75,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(SessionMiddleware, secret_key="!secret")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
+from starlette.requests import Request
 
 from server.app.schemas.token_schemas import Token
 from server.app.schemas.users_schemas import (
@@ -23,9 +24,22 @@ from server.app.utils.dependencies.dependencies import (
     handle_jwt_errors
 )
 from server.app.utils.exceptions import GlobalException
+from server.app.utils.auth import oauth
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/google/login")
+async def google_login(request: Request):
+    print(oauth.config.__dict__)
+    return await oauth.google.authorize_redirect(request, request.url_for("google_callback"))
+
+
+@router.get("/google/callback")
+async def google_callback(request: Request):
+    token = await oauth.google.authorize_access_token(request)
+    print(token)
 
 
 @router.post("/customer/register", response_model=UserResponse)

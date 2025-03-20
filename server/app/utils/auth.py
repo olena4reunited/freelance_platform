@@ -1,18 +1,33 @@
 import os
 from datetime import timedelta, datetime, timezone
 from typing import Any
+import json
 
 import jwt
 from cryptography.hazmat.primitives import serialization
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
+from starlette.config import Config
+from authlib.integrations.starlette_client import OAuth, OAuthError
 
 from server.app.utils.exceptions import GlobalException
 
 
+CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+config = Config(os.path.join(os.path.dirname(__file__), ".env"))
+oauth = OAuth(config)
+oauth.register(
+    name='google',
+    server_metadata_url=CONF_URL,
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 
 def verify_password(plain_password, hashed_password):

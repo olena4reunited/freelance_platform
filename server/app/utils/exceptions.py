@@ -1,4 +1,4 @@
-from typing import Callable, Any
+from typing import Callable, Any, Awaitable
 from functools import wraps
 
 from fastapi import HTTPException
@@ -12,8 +12,10 @@ class GlobalException(Exception):
     @classmethod
     def catcher(cls, func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Exception:
+        async def wrapper(*args: Any, **kwargs: Any) -> Exception:
             try:
+                if isinstance(func, Awaitable):
+                    return await func(*args, **kwargs)
                 return func(*args, **kwargs)
             except (DatabaseError, OperationalError, IntegrityError) as e:
                 GlobalException.CustomHTTPException.raise_exception(
