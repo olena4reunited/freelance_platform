@@ -73,10 +73,16 @@ class UserValidator:
             )
         if not self.password and not self.method:
             return self
-        if not (self.password == self.password_repeat):
+        
+        if self.password != self.password_repeat:
             GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Passwords don't match"
+            )
+        if not self.password_repeat:
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Repeat your password"
             )
 
         if len(self.password) < 8:
