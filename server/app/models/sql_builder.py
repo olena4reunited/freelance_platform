@@ -164,27 +164,3 @@ class SQLBuilder:
                 self.params.extend(group_params)
 
         return query, self.params
-
-
-# try:
-#     with PostgresDatabase() as db:
-#         with db.connection.cursor() as cursor:
-#             # sql_builder = SQLBuilder("users").select("username").AND(column="is_blocked", param=None).add_group(SQLBuilder().OR(column="id", param="2").OR(column="id", param="20")).end()
-#             # print(sql_builder) 
-
-#             query, params = SQLBuilder("payments").select("id", "payment").where("user_id", params=4).get()
-
-
-#             logger.info("\x1b[1m%s\x1b[0m", query.as_string(cursor))
-
-#             cursor.execute(query, params)
-
-#             logger.info("\x1b[1m%s\x1b[0m", params)
-#             logger.info("\x1b[1;32m%s\x1b[0m", cursor.fetchall())
-# except Exception as e:
-#     traceback.print_exc()
-#     logger.error(
-#         "Error was occured:\n%s\x1b[31m%s\x1b[0m",
-#         " "*10,
-#         repr(e)
-#     )
