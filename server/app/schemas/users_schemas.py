@@ -50,8 +50,8 @@ class UserResponse(BaseModel):
 
 
 class UserResponseExtended(UserResponse):
-    is_verified: bool
-    block_expired: datetime
+    is_verified: bool | None
+    block_expired: datetime | None
     delete_date: datetime | None
     is_blocked: bool
 

@@ -5,6 +5,7 @@ from psycopg2 import sql
 
 from server.app.database.database import PostgresDatabase
 from server.app.models._base_model import BaseModel
+from server.app.models.sql_builder import SQLBuilder
 
 
 class UserPlanEnum(Enum):
@@ -17,42 +18,43 @@ class User(BaseModel):
 
     @staticmethod
     def get_user_by_id(user_id: int) -> dict[str, Any]:
+        query, params = (
+            SQLBuilder(table_name=User.table_name) \
+            .select(
+                "id",
+                "first_name",
+                "last_name",
+                "username",
+                "email",
+                "phone_number",
+                "photo_link",
+                "description",
+                "balance",
+                "rating",
+                "plan_id",
+                "is_verified",
+                "block_expired",
+                "delete_date",
+                "is_blocked"
+            ) \
+            .where(where_column="id", params=user_id) \
+            .get()
+        )
+
         with PostgresDatabase() as db:
-            return db.fetch(
-                query="""
-                    SELECT 
-                        id,
-                        first_name,
-                        last_name,
-                        username,
-                        email,
-                        phone_number,
-                        photo_link,
-                        description,
-                        is_verified,
-                        is_blocked,
-                        block_expired,
-                        balance,
-                        rating,
-                        plan_id,
-                        delete_date
-                    FROM users
-                    WHERE id = %s;
-                """,
-                params=(user_id, ),
-            )
+            return db.fetch(query, params)
 
     @staticmethod
     def get_user_by_field(field: str, value: str | int) -> dict[str, Any]:
-        query = sql.SQL("""
-            SELECT * FROM users WHERE {field} = %s
-        """).format(field=sql.Identifier(field))
+        query, params = (
+            SQLBuilder(table_name=User.table_name) \
+            .select() \
+            .where(where_column=field, params=value) \
+            .get()
+        )
 
         with PostgresDatabase() as db:
-            return db.fetch(
-                query=query,
-                params=(value,),
-            )
+            return db.fetch(query, params)
 
     @staticmethod
     def get_all_users(plan_name: str, limit: int) -> list[dict[str, Any]]:

@@ -2,6 +2,7 @@ from typing import Any
 
 from server.app.database.database import PostgresDatabase
 from server.app.models._base_model import BaseModel
+from server.app.models.sql_builder import SQLBuilder
 
 
 class Payment(BaseModel):
@@ -21,11 +22,7 @@ class Payment(BaseModel):
 
     @staticmethod
     def get_payments_by_user(user_id: int) -> list[dict[str, Any]]:
+        query, params = SQLBuilder("payments").select("id", "payment").where("user_id", params=user_id).get()
+
         with PostgresDatabase() as db:
-            return db.fetch(
-                """
-                    SELECT id, payment FROM payments WHERE user_id = %s;
-                """,
-                (user_id, ),
-                is_all=True
-            )
+            return db.fetch(query, params, is_all=True)

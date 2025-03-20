@@ -68,7 +68,7 @@ class UserController:
 
     @staticmethod
     def get_user(user_id: int) -> dict[str, Any]:
-        return User.get_user_by_field("id", user_id)
+        return User.get_user_by_id(user_id)
 
     @staticmethod
     def get_user_by_token(access_tkn: str) -> dict[str, Any]:

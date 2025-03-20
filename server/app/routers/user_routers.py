@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from server.app.schemas.token_schemas import Token
 from server.app.schemas.users_schemas import (
     UserResponse,
+    UserResponseExtended,
     UserCreateCustomer,
     UserCreatePerformer,
     UserCreateToken
@@ -136,7 +137,7 @@ def read_all_users(
     return UserController.get_all_users(plan, limit)
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}")
 @GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_list", "read_user_details"])
@@ -147,7 +148,7 @@ def get_user(
     return UserController.get_user(user_id)
 
 
-@router.patch("/{user_id}", response_model=UserResponse)
+@router.patch("/{user_id}", response_model=UserResponseExtended)
 @GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_users_list", "read_user_details", "update_user_details"])

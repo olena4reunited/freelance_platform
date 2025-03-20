@@ -1,6 +1,7 @@
 from typing import Any
 
 from server.app.database.database import PostgresDatabase
+from server.app.models.sql_builder import SQLBuilder
 
 
 class BaseModel:
@@ -8,19 +9,17 @@ class BaseModel:
 
     @classmethod
     def get_record_by_id(cls, record_id: int) -> dict[str, Any] | None:
+        query, params = SQLBuilder(table_name=cls.table_name).select().where("id", params=record_id).get()
+
         with PostgresDatabase() as db:
-            return db.fetch(
-                f"SELECT * FROM {cls.table_name} WHERE id = %s",
-                (record_id,),
-            )
+            return db.fetch(query, params)
 
     @classmethod
     def get_all_records(cls) -> list[dict[str, Any]] | None:
+        query, params = SQLBuilder(table_name=cls.table_name).select().get()
+
         with PostgresDatabase() as db:
-            return db.fetch(
-                f"SELECT * FROM {cls.table_name}",
-                is_all=True,
-            )
+            return db.fetch(query, params, is_all=True)
 
     @classmethod
     def create_record(cls, **kwargs) -> dict[str, Any] | None:
