@@ -122,12 +122,12 @@ class User(BaseModel):
             return db.fetch(
                 query=query,
                 params=(
-                    user_data["first_name"],
-                    user_data["last_name"],
-                    user_data["username"],
-                    user_data["email"],
-                    user_data["phone_number"],
-                    user_data["password"],
+                    user_data.get("first_name"),
+                    user_data.get("last_name"),
+                    user_data.get("username"),
+                    user_data.get("email"),
+                    user_data.get("phone_number", None),
+                    user_data.get("password"),
                 )
             )
 

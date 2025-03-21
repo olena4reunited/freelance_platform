@@ -73,3 +73,7 @@ class UserPerformerResponse(BaseModel):
 
 class UserCustomerResponse(UserPerformerResponse):
     pass
+
+
+class PasswordResetRequest(BaseModel):
+    email: str

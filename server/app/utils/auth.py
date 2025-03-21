@@ -1,14 +1,16 @@
 import os
 from datetime import timedelta, datetime, timezone
 from typing import Any
-import json
+import string
+import secrets
+import random
 
 import jwt
 from cryptography.hazmat.primitives import serialization
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from starlette.config import Config
-from authlib.integrations.starlette_client import OAuth, OAuthError
+from authlib.integrations.starlette_client import OAuth
 
 from server.app.utils.exceptions import GlobalException
 
@@ -29,6 +31,9 @@ oauth.register(
     }
 )
 
+selection_list = string.ascii_letters + string.digits + string.punctuation
+selection_leterrs_nums = string.ascii_lowercase + string.digits
+
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -36,6 +41,24 @@ def verify_password(plain_password, hashed_password):
 
 def get_password_hash(password):
     return pwd_context.hash(password)
+
+
+def generate_password():
+    passwd = ""
+    
+    for _ in range(random.randint(16, 64)):
+        passwd += "".join(secrets.choice(selection_list))
+    
+    return get_password_hash(password=passwd)
+
+
+def generate_username(first_name: str, last_name: str):
+    username = f"{first_name.lower()}_{last_name.lower()}_"
+
+    for _ in range(16):
+        username += "".join(secrets.choice(selection_leterrs_nums))
+    
+    return username
 
 
 with open(os.path.join(os.path.dirname(__file__), "../../keys/private.pem"), "rb") as key_file:

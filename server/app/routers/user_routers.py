@@ -1,7 +1,7 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
-from starlette.requests import Request
+from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi.requests import Request
 
 from server.app.schemas.token_schemas import Token
 from server.app.schemas.users_schemas import (
@@ -9,7 +9,8 @@ from server.app.schemas.users_schemas import (
     UserResponseExtended,
     UserCreateCustomer,
     UserCreatePerformer,
-    UserCreateToken
+    UserCreateToken,
+    PasswordResetRequest
 )
 from server.app.controllers.user_controller import UserController
 from server.app.validators.user_validators import (
@@ -25,21 +26,27 @@ from server.app.utils.dependencies.dependencies import (
 )
 from server.app.utils.exceptions import GlobalException
 from server.app.utils.auth import oauth
+from server.app.services.smtp_service import send_reset_code
 
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/google/login")
-async def google_login(request: Request):
-    print(oauth.config.__dict__)
+async def google_login(
+    request: Request,
+    plan: str = Query(None, regex="^(customer|performer)$")
+):
+    request.session["plan"] = plan
     return await oauth.google.authorize_redirect(request, request.url_for("google_callback"))
 
 
 @router.get("/google/callback")
 async def google_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
-    print(token)
+    plan = request.session.pop("plan", None)
+
+    return await UserController.authenticate_user_google(token=token, plan=plan)
 
 
 @router.post("/customer/register", response_model=UserResponse)
@@ -103,6 +110,15 @@ def refresh_user_token(refresh_tkn: dict[str, str]):
 @required_permissions(["read_own_user_details"])
 def read_user_me(user: dict[str, Any] = Depends(get_current_user)):
     return user
+
+
+@router.post("/password/reset")
+@GlobalException.catcher
+def reset_password(data: PasswordResetRequest):
+    email = data.email
+    code = UserController.password_reset_request(email)
+    
+    send_reset_code(email, code)
 
 
 @router.patch("/me", response_model=UserResponse)
