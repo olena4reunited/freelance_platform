@@ -1,5 +1,8 @@
 BEGIN;
 
+ALTER TABLE orders 
+DROP COLUMN performer_team_id;
+
 DROP TABLE IF EXISTS teams_users;
 DROP TABLE IF EXISTS teams;
 DROP TABLE IF EXISTS users_specialities;

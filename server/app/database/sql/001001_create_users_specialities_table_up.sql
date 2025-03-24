@@ -55,7 +55,10 @@ CREATE TABLE IF NOT EXISTS teams_users (
     UNIQUE (team_id, user_id)
 );
 
-ALTER TABLE orders ADD COLUMN performer_team_id INTEGER NULL;
-ALTER TABLE orders ADD CONSTRAINT fk_performer_team FOREIGN KEY (performer_team_id) REFERENCES teams(id) ON DELETE SET NULL;
+ALTER TABLE orders 
+ADD COLUMN performer_team_id INTEGER NULL;
+ALTER TABLE orders 
+ADD CONSTRAINT fk_performer_team 
+FOREIGN KEY (performer_team_id) REFERENCES teams(id) ON DELETE SET NULL;
 
 COMMIT;
