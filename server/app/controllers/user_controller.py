@@ -166,7 +166,8 @@ class UserController:
         
         hashed_password = get_password_hash(confirm_data["password"])
         redis_reset_passwd.hdel("passwd_reset", confirm_data["email"])
-        User.update_user(user_id=user["id"], user_data={"password": hashed_password})
+        
+        return User.update_user(user_id=user["id"], user_data={"password": hashed_password})
 
 
     @staticmethod

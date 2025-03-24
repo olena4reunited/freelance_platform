@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Any
 
+from psycopg2.extras import RealDictCursor
 from psycopg2 import sql
 
 from server.app.database.database import PostgresDatabase
@@ -96,7 +97,6 @@ class User(BaseModel):
                 is_all=True,
             )
 
-
     @staticmethod
     def create_user(user_data: dict[str, Any], user_plan: UserPlanEnum) -> dict[str, Any]:
         query = sql.SQL("""
@@ -148,7 +148,7 @@ class User(BaseModel):
         )
 
         with PostgresDatabase(on_commit=True) as db:
-            with db.connection.cursor() as cursor:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     query,
                     {"user_id": user_id, **user_data},

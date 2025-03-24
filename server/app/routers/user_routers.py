@@ -125,7 +125,7 @@ def reset_password(data: PasswordResetRequest):
 @router.post("/password/reset/confirm")
 @GlobalException.catcher
 def confirm_reset_password(data: PasswordResetConfirmRequest):
-    UserController.password_reset_confirm_request(data.model_dump())
+    return UserController.password_reset_confirm_request(data.model_dump())
 
 
 @router.patch("/me", response_model=UserResponse)
