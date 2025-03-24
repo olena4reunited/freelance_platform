@@ -148,7 +148,7 @@ class User(BaseModel):
         )
 
         with PostgresDatabase(on_commit=True) as db:
-            with db.cursor() as cursor:
+            with db.connection.cursor() as cursor:
                 cursor.execute(
                     query,
                     {"user_id": user_id, **user_data},

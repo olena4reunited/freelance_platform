@@ -21,7 +21,7 @@ SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 
-env = Environment(loader=FileSystemLoader("templates"))
+env = Environment(loader=FileSystemLoader("server/app/templates"))
 
 template = env.get_template("reset_password.html")
 
@@ -34,9 +34,6 @@ def send_reset_code(email: str, code: str):
 
     html = template.render(code=code)
 
-    # body = f"Your reset password code: {code}"
-
-    # msg = MIMEText(body)
     msg = MIMEText(html, "html")
     msg["Subject"] = subject
     msg["From"] = SMTP_USER

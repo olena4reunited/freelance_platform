@@ -10,7 +10,8 @@ from server.app.schemas.users_schemas import (
     UserCreateCustomer,
     UserCreatePerformer,
     UserCreateToken,
-    PasswordResetRequest
+    PasswordResetRequest,
+    PasswordResetConfirmRequest
 )
 from server.app.controllers.user_controller import UserController
 from server.app.validators.user_validators import (
@@ -119,6 +120,12 @@ def reset_password(data: PasswordResetRequest):
     code = UserController.password_reset_request(email)
     
     send_reset_code(email, code)
+
+
+@router.post("/password/reset/confirm")
+@GlobalException.catcher
+def confirm_reset_password(data: PasswordResetConfirmRequest):
+    UserController.password_reset_confirm_request(data.model_dump())
 
 
 @router.patch("/me", response_model=UserResponse)

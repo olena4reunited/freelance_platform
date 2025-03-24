@@ -138,6 +138,38 @@ class UserController:
         return code
 
     @staticmethod
+    def password_reset_confirm_request(confirm_data: dict[str, Any]):
+        user = User.get_user_by_field("email", confirm_data["email"])
+        
+        if not user:
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=404,
+                detail="User with this email is not exist"
+            )
+        
+            return
+        if redis_reset_passwd.get(confirm_data["email"]) != confirm_data["code"]:
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Reset code is not match"
+            )
+    
+            return
+        
+        if confirm_data["password"] != confirm_data["password_repeat"]:
+            GlobalException.CustomHTTPException.raise_exception(
+                status_code=400,
+                detail="Password is not match"
+            )
+        
+            return
+        
+        hashed_password = get_password_hash(confirm_data["password"])
+        redis_reset_passwd.delete(confirm_data["email"])
+        User.update_user(user_id=user["id"], user_data={"password": hashed_password})
+
+
+    @staticmethod
     def refresh_bearer_token(refresh_tkn: str) -> dict[str, Any]:
         return refresh_token(refresh_tkn)
 

@@ -77,3 +77,10 @@ class UserCustomerResponse(UserPerformerResponse):
 
 class PasswordResetRequest(BaseModel):
     email: str
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    email: str
+    code: str
+    password: str
+    password_repeat: str
