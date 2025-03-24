@@ -1,5 +1,6 @@
 from typing import Callable, Any, Awaitable
 from functools import wraps
+import traceback
 
 from fastapi import HTTPException
 from fastapi.exceptions import ResponseValidationError, ValidationException
@@ -18,18 +19,21 @@ class GlobalException(Exception):
                     return await func(*args, **kwargs)
                 return func(*args, **kwargs)
             except (DatabaseError, OperationalError, IntegrityError) as e:
+                traceback.print_exc()
                 GlobalException.CustomHTTPException.raise_exception(
                     500,
                     "Database error",
                     extra={"error": str(e)}
                 )
             except HTTPException as e:
+                traceback.print_exc()
                 GlobalException.CustomHTTPException.raise_exception(
                     e.status_code,
                     e.detail,
                     extra={"error": str(e)}
                 )
             except Exception as e:
+                traceback.print_exc()
                 GlobalException.CustomHTTPException.raise_exception(
                     501,
                     "Service not implemented or do not exist anymore",
