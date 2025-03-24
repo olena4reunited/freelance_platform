@@ -133,7 +133,7 @@ class UserController:
             return
         
         code = generate_code()
-        redis_reset_passwd.set(email, code)
+        redis_reset_passwd.hset(name="passwd_reset", key=email, value=code)
       
         return code
 
@@ -148,7 +148,7 @@ class UserController:
             )
         
             return
-        if redis_reset_passwd.get(confirm_data["email"]) != confirm_data["code"]:
+        if redis_reset_passwd.hget(name="passwd_reset", key=confirm_data["email"]) != confirm_data["code"]:
             GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Reset code is not match"
@@ -165,7 +165,7 @@ class UserController:
             return
         
         hashed_password = get_password_hash(confirm_data["password"])
-        redis_reset_passwd.delete(confirm_data["email"])
+        redis_reset_passwd.hdel("passwd_reset", confirm_data["email"])
         User.update_user(user_id=user["id"], user_data={"password": hashed_password})
 
 
