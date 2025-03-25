@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
     last_name: str
     username: str
     email: str
-    phone_number: str
+    phone_number: str | None = None
     password: str
     password_repeat: str
 
@@ -20,7 +20,7 @@ class UserCreateCustomer(UserCreate):
 
 
 class UserCreatePerformer(UserCreate):
-    pass
+    specialities: list[str] | None = None
 
 
 class UserUpdate(BaseModel):
@@ -41,7 +41,7 @@ class UserResponse(BaseModel):
     last_name: str
     username: str
     email: str
-    phone_number: str
+    phone_number: str | None
     photo_link: str | None
     description: str | None
     balance: Annotated[Decimal, Field(strict=True, max_digits=10, decimal_places=2)] | None
@@ -49,11 +49,19 @@ class UserResponse(BaseModel):
     plan_name: str
 
 
+class UserResponsePerformer(UserResponse):
+    specialities: list[str] | None
+
+
 class UserResponseExtended(UserResponse):
     is_verified: bool | None
     block_expired: datetime | None
     delete_date: datetime | None
     is_blocked: bool
+
+
+class UserResponseExtendedPerformer(UserResponseExtended):
+    specialities: list[str] | None
 
 
 class UserCreateToken(BaseModel):
