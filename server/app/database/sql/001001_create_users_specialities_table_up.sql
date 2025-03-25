@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS specialities (
     id SERIAL PRIMARY KEY,
-    speciality VARCHAR(128) NOT NULL
+    name VARCHAR(128) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tags (
