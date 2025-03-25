@@ -1,9 +1,9 @@
 from datetime import timedelta
 from typing import Any
 
-from server.app.models.payment_model import Payment
 from server.app.models.user_model import User
 from server.app.models.plan_model import Plan
+from server.app.models.speciality_model import Speciality
 from server.app.models.user_model import UserPlanEnum
 from server.app.utils.auth import (
     get_password_hash,
@@ -24,20 +24,15 @@ class UserController:
     @staticmethod
     def create_user_customer(user_data: dict) -> dict[str, Any]:
         user_data["password"] = get_password_hash(user_data["password"])
-        user_data.pop("password_repeat")
         user_data["payment"] = encrypt_data(user_data["payment"])
 
-        user = User.create_user(user_data, UserPlanEnum.customer)
-        Payment.create_payment(user["id"], user_data["payment"])
-
-        return user
+        return User.create_user_customer(user_data)
 
     @staticmethod
     def create_user_performer(user_data: dict) -> dict[str, Any]:
         user_data["password"] = get_password_hash(user_data["password"])
-        user_data.pop("password_repeat")
 
-        return User.create_user(user_data, UserPlanEnum.performer)
+        return User.create_user_performer(user_data)
 
     @staticmethod
     def authenticate_user(user_data: dict) -> dict[str, Any]:
@@ -48,15 +43,13 @@ class UserController:
         elif user_data["email"]:
             user = User.get_user_by_field("email", user_data["email"])
 
-        plan_name = Plan.get_record_by_id(user["plan_id"])
-
         user_data_tokenize = {
             "first_name": user["first_name"],
             "last_name": user["last_name"],
             "username": user["username"],
             "email": user["email"],
             "phone_number": user["phone_number"],
-            "plan_name": plan_name["name"],
+            "plan_name": user["plan_name"],
         }
 
         access_tkn = create_token(user_data_tokenize, timedelta(minutes=3000))
@@ -98,9 +91,6 @@ class UserController:
             )
         else:
             user = User.get_user_by_field("email", user_info.get("email"))
-            plan_name = Plan.get_record_by_id(user["plan_id"])["name"]
-            user["plan_name"] = plan_name
-            user.pop("plan_id")
         
         user_data_tokenize = {
             "first_name": user["first_name"],
@@ -181,14 +171,15 @@ class UserController:
     @staticmethod
     def get_user_by_token(access_tkn: str) -> dict[str, Any]:
         username = verify_token(access_tkn)["content"]["username"]
-
         user = User.get_user_by_field("username", username)
-        plan_name = Plan.get_record_by_id(user["plan_id"])["name"]
-
-        user["plan_name"] = plan_name
-        user.pop("plan_id")
 
         return user
+
+    @staticmethod
+    def add_performer_specialities(user: dict[str, Any]):
+        user.update(
+            Speciality.get_users_specialities_array(user.get("id"))
+        )
 
     @staticmethod
     def get_all_users(

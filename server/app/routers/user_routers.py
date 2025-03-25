@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 from fastapi import APIRouter, Depends, Query, BackgroundTasks
 from fastapi.requests import Request
@@ -6,6 +6,7 @@ from fastapi.requests import Request
 from server.app.schemas.token_schemas import Token
 from server.app.schemas.users_schemas import (
     UserResponse,
+    UserResponsePerformer,
     UserResponseExtended,
     UserCreateCustomer,
     UserCreatePerformer,
@@ -68,7 +69,7 @@ def create_user_customer(user_customer_data: UserCreateCustomer):
     return UserController.create_user_customer(user_customer_data.model_dump())
 
 
-@router.post("/performer/register", response_model=UserResponse)
+@router.post("/performer/register", response_model=UserResponsePerformer)
 @GlobalException.catcher
 def create_user_performer(user_performer_data: UserCreatePerformer):
     UserValidator(
@@ -105,11 +106,14 @@ def refresh_user_token(refresh_tkn: dict[str, str]):
     return UserController.refresh_bearer_token(refresh_tkn["refresh_token"])
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=Union[UserResponse, UserResponsePerformer])
 @GlobalException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details"])
 def read_user_me(user: dict[str, Any] = Depends(get_current_user)):
+    if user.get("plan_name") == "performer":
+        UserController.add_performer_specialities(user)
+    
     return user
 
 
