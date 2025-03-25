@@ -8,6 +8,7 @@ from server.app.schemas.users_schemas import (
     UserResponse,
     UserResponsePerformer,
     UserResponseExtended,
+    UserResponseExtendedPerformer,
     UserCreateCustomer,
     UserCreatePerformer,
     UserCreateToken,
@@ -40,7 +41,10 @@ async def google_login(
     plan: str = Query(None, regex="^(customer|performer)$")
 ):
     request.session["plan"] = plan
-    return await oauth.google.authorize_redirect(request, request.url_for("google_callback"))
+    return await oauth.google.authorize_redirect(
+        request, 
+        request.url_for("google_callback")
+    )
 
 
 @router.get("/google/callback")
@@ -160,9 +164,10 @@ def update_user(
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details", "update_own_user_details", "delete_own_user"])
 def delete_user(
-        user : dict[str, Any] = Depends(get_current_user)
+        user: dict[str, Any] = Depends(get_current_user)
 ):
     UserController.delete_user(user["id"])
+
     return
 
 
@@ -173,23 +178,28 @@ def delete_user(
 def read_all_users(
         plan: str = Query(None, description="filter by role"),
         limit: int = Query(None, description="number of users to return"),
-        user : dict[str, Any] = Depends(get_current_user)
+        user: dict[str, Any] = Depends(get_current_user)
 ):
     return UserController.get_all_users(plan, limit)
 
 
-@router.get("/{user_id}")
+@router.get("/{user_id}", response_model=Union[UserResponseExtended, UserResponseExtendedPerformer])
 @GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_users_list", "read_user_details"])
 def get_user(
         user_id: int,
-        user : dict[str, Any] = Depends(get_current_user)
+        user: dict[str, Any] = Depends(get_current_user)
 ):
-    return UserController.get_user(user_id)
+    user = UserController.get_user(user_id)
+    
+    if user.get("plan_name") == "performer":
+        UserController.add_performer_specialities(user)
+    
+    return user
 
 
-@router.patch("/{user_id}", response_model=UserResponseExtended)
+@router.patch("/{user_id}", response_model=Union[UserResponseExtended, UserResponseExtendedPerformer])
 @GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_users_list", "read_user_details", "update_user_details"])

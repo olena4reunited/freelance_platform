@@ -157,7 +157,10 @@ class UserTokenValidator:
                 detail="User does not exist",
                 extra={"username": self.username, "email": self.email}
             )
-        if not verify_password(self.password, user["password"]):
+
+        hashed_password = User.get_user_hashed_password(user.get("id"))
+
+        if not verify_password(self.password, hashed_password):
             GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
                 detail="Password does not match"

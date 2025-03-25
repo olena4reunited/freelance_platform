@@ -19,31 +19,32 @@ class User(BaseModel):
 
     @staticmethod
     def get_user_by_id(user_id: int) -> dict[str, Any]:
-        query, params = (
-            SQLBuilder(table_name=User.table_name) \
-            .select(
-                "id",
-                "first_name",
-                "last_name",
-                "username",
-                "email",
-                "phone_number",
-                "photo_link",
-                "description",
-                "balance",
-                "rating",
-                "plan_id",
-                "is_verified",
-                "block_expired",
-                "delete_date",
-                "is_blocked"
-            ) \
-            .where(where_column="id", params=user_id) \
-            .get()
-        )
-
         with PostgresDatabase() as db:
-            return db.fetch(query, params)
+            return db.fetch(
+                """
+                    SELECT 
+                        u.id AS id,
+                        first_name,
+                        last_name,
+                        username,
+                        email,
+                        phone_number,
+                        photo_link,
+                        description,
+                        balance,
+                        rating,
+                        pln.name AS plan_name,
+                        is_verified,
+                        block_expired,
+                        delete_date,
+                        is_blocked
+                    FROM users u
+                    JOIN plans pln
+                        ON pln.id = u.plan_id
+                    WHERE u.id = %s 
+                """,
+                (user_id, )
+            )
 
     @staticmethod
     def get_user_by_field(field: str, value: str | int) -> dict[str, Any]:
@@ -64,15 +65,30 @@ class User(BaseModel):
                 FROM users u
                 JOIN plans pln
                     ON pln.id = u.plan_id
-                WHERE {field} = {value} 
+                WHERE {} = {} 
             """
-        ).format(field=sql.Identifier(field), value=sql.Placeholder())
+        ).format(sql.Identifier(field), sql.Placeholder())
 
         with PostgresDatabase() as db:
             return db.fetch(
                 query,
-                value
+                (value, )
             )
+
+    @staticmethod
+    def get_user_hashed_password(user_id: int):
+        with PostgresDatabase() as db:
+            with db.connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                        SELECT password
+                        FROM users
+                        WHERE id = %s
+                    """,
+                    (user_id, )
+                )
+
+                return cursor.fetchone()[0]
 
     @staticmethod
     def get_all_users(plan_name: str, limit: int) -> list[dict[str, Any]]:

@@ -57,7 +57,7 @@ class UserResponseExtended(UserResponse):
     is_verified: bool | None
     block_expired: datetime | None
     delete_date: datetime | None
-    is_blocked: bool
+    is_blocked: bool | None
 
 
 class UserResponseExtendedPerformer(UserResponseExtended):
