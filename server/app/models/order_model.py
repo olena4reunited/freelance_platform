@@ -21,8 +21,10 @@ class Order(BaseModel):
                             o.id AS id, 
                             o.name AS name, 
                             o.description AS description, 
-                            o.customer_id AS customer_id, 
-                            COALESCE(o.performer_id, NULL) AS performer_id, 
+                            o.customer_id AS customer_id,
+                            o.execution_type AS execution_type,
+                            COALESCE(o.performer_id, NULL) AS performer_id,
+                            COALESCE(o.performer_team_id, NULL) AS performer_team_id,
                             COALESCE(i.image_link, NULL) AS image_link, 
                             COALESCE(oi.is_main, NULL) AS is_main
                         FROM orders o
@@ -30,16 +32,30 @@ class Order(BaseModel):
                             ON o.id = oi.order_id
                         LEFT JOIN images i 
                             ON i.id = oi.image_id
-                        WHERE customer_id = %s AND (oi.is_main IS TRUE OR NULL)
+                        WHERE 
+                            customer_id = %s
+                            AND (oi.is_main IS TRUE OR oi.is_main IS NULL)
+                    ),
+                    selected_tags AS (
+                        SELECT ot.order_id AS order_id, ARRAY_AGG(t.name) AS tags
+                        FROM orders_tags ot
+                        JOIN tags t
+                            ON ot.tag_id = t.id
+                        GROUP BY ot.order_id
                     )
                     SELECT 
                         id, 
                         name, 
                         description, 
                         customer_id, 
-                        performer_id, 
-                        image_link
-                    FROM customers_orders;
+                        execution_type,
+                        performer_id,
+                        performer_team_id,
+                        image_link,
+                        st.tags AS tags
+                    FROM customers_orders co
+                    JOIN selected_tags st
+                        ON st.order_id = co.id;
                 """,
                 (customer_id, ),
                 is_all=True,
@@ -80,28 +96,38 @@ class Order(BaseModel):
         with PostgresDatabase() as db:
             return db.fetch(
                 """
-                    WITH selected_images AS (
-                        SELECT 
-                            oi.order_id AS order_id, 
-                            COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
-                        FROM orders_images oi 
-                        LEFT JOIN images i 
-                            ON oi.image_id = i.id 
-                        GROUP BY oi.order_id
-                    )
                     SELECT 
-                        o.id AS id, 
-                        name, 
-                        description, 
-                        customer_id, 
-                        performer_id, 
-                        si.images_links AS images_links
+                        o.id AS id,
+                        o.name AS name,
+                        o.description AS description,
+                        o.customer_id AS customer_id,
+                        o.execution_type AS execution_type,
+                        o.performer_id AS performer_id,
+                        o.performer_team_id AS performer_team_id,
+                        ARRAY_AGG(DISTINCT i.image_link) 
+                            FILTER 
+                                (WHERE i.image_link IS NOT NULL) 
+                            AS images_links,
+                        ARRAY_AGG(t.name) AS tags
                     FROM orders o
-                    LEFT JOIN selected_images si 
-                        ON o.id = si.order_id
-                    WHERE o.id = %s;
+                    LEFT JOIN orders_images oi
+                        ON oi.order_id = o.id
+                    LEFT JOIN images i
+                        ON oi.image_id = i.id
+                    LEFT JOIN orders_tags ot
+                        ON ot.order_id = o.id
+                    LEFT JOIN tags t
+                        ON ot.tag_id = t.id
+                    WHERE o.id = %s
+                    GROUP BY 
+                        o.id, 
+                        o.name, 
+                        o.description, 
+                        o.customer_id,
+                        o.performer_id, 
+                        o.performer_team_id;
                 """,
-                (order_id,)
+                (order_id, )
             )
 
     @staticmethod

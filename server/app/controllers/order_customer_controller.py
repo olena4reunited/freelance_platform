@@ -1,6 +1,8 @@
 from typing import Any
 
 from server.app.models.order_model import Order
+from server.app.models.user_model import User
+from server.app.models.team_model import Team
 
 
 class OrderCustomerController:
@@ -14,7 +16,23 @@ class OrderCustomerController:
 
     @staticmethod
     def get_order_details(order_id: int) -> dict[str, Any] | None:
-        return Order.get_order_details(order_id)
+        order = Order.get_order_details(order_id)
+
+        if (
+            order["execution_type"] == "single" 
+            and order.get("performer_id")
+        ):
+            order["performer"] = User.get_order_performer(order["performer_id"])
+        if (
+            order["execution_type"] == "team" 
+            and order.get("performer_team_id")
+        ):
+            order["team"] = Team.get_order_team(order.get("performer_team_id"))
+
+        order.pop("performer_id")
+        order.pop("performer_team_id")
+
+        return order
 
     @staticmethod
     def create_order(order_data: dict[str, Any], customer_id: int) -> dict[str, Any]:

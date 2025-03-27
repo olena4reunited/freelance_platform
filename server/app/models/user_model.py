@@ -76,6 +76,22 @@ class User(BaseModel):
             )
 
     @staticmethod
+    def get_order_performer(user_id: int) -> dict[str, Any]:
+        with PostgresDatabase() as db:
+            return db.fetch(
+                """
+                    SELECT 
+                        username,
+                        first_name,
+                        last_name,
+                        photo_link
+                    FROM users
+                    WHERE id = %s;
+                """,
+                (user_id, )
+            )
+
+    @staticmethod
     def get_user_hashed_password(user_id: int):
         with PostgresDatabase() as db:
             with db.connection.cursor() as cursor:

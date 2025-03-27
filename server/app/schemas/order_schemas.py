@@ -3,6 +3,19 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class PerformerBase(BaseModel):
+    username: str
+    first_name: str
+    last_name: str
+    photo_link: str | None
+
+
+class TeamBase(BaseModel):
+    name: str
+    lead: PerformerBase
+    performers: list[PerformerBase] | PerformerBase
+
+
 class OrderCreate(BaseModel):
     name: str
     description: str
@@ -20,20 +33,32 @@ class OrderListResponse(BaseModel):
     name: str
     description: str | None
     customer_id: int
-    performer_id: int | None = None
+    execution_type: str
+    performer_id: int | None
+    performer_team_id: int | None
     image_link: str | None
+    tags: list[str]
 
 
-class OrderSingleResponse(BaseModel):
+class OrderDetailResponseBase(BaseModel):
     id: int
     name: str
     description: str | None
     customer_id: int
-    performer_id: int | None = None
-    images_links: list[str] | None = None
+    execution_type: str
+    images_links: list[str] | None
+    tags: list[str]
 
 
-class OrderSingleResponseExtended(OrderSingleResponse):
+class OrderDetailResponseSingle(OrderDetailResponseBase):
+    performer: PerformerBase
+
+
+class OrderDetailResponseTeam(OrderDetailResponseBase):
+    team: TeamBase
+
+
+class OrderSingleResponseExtended(OrderDetailResponseBase):
     blocked_until: datetime
     is_blocked: bool
 

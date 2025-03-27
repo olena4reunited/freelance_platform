@@ -6,7 +6,9 @@ from server.app.schemas.order_schemas import (
     OrderCreate,
     OrderUpdate,
     OrderListResponse,
-    OrderSingleResponse,
+    OrderDetailResponseBase,
+    OrderDetailResponseSingle,
+    OrderDetailResponseTeam,
     OrderListPerformerResponse,
     OrderPerformerAssignedResponse,
     OrderAdminUpdate,
@@ -32,6 +34,7 @@ from server.app.utils.dependencies.dependencies import (
 )
 from server.app.services.mqtt_service.mqtt_service import mqtt
 
+
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
@@ -51,7 +54,7 @@ def get_order_list_performers(user: dict[str, Any] = Depends(get_current_user)):
     return OrderCustomerController.get_all_customer_performers(user.get("id"))
 
 
-@router.get("/customer/me/list/{order_id}", response_model=OrderSingleResponse)
+@router.get("/customer/me/list/{order_id}", response_model=Union[OrderDetailResponseBase, OrderDetailResponseSingle, OrderDetailResponseTeam])
 @GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["read_own_orders", "read_own_order_details"])
@@ -65,7 +68,7 @@ def get_order_list(
     return OrderCustomerController.get_order_details(order_id)
 
 
-@router.post("/customer/me", response_model=OrderSingleResponse)
+@router.post("/customer/me", response_model=OrderDetailResponseBase)
 @GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["create_order"])
@@ -86,7 +89,7 @@ def create_order(
     return order
 
 
-@router.patch("/customer/me/list/{order_id}", response_model=OrderSingleResponse)
+@router.patch("/customer/me/list/{order_id}", response_model=OrderDetailResponseBase)
 @GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["read_own_orders", "read_own_order_details", "update_own_order"])
@@ -172,7 +175,7 @@ def get_all_orders(
     return OrderAdminController.get_all_orders()
 
 
-@router.get("/admin/orders/{order_id}", response_model=OrderSingleResponse)
+@router.get("/admin/orders/{order_id}", response_model=OrderDetailResponseBase)
 @GlobalException.catcher
 @required_plans(["admin", "moderator"])
 @required_permissions(["read_all_orders", "read_all_orders_details"])
@@ -183,7 +186,7 @@ def get_single_order(
     return OrderAdminController.get_order_by_id(order_id=order_id)
 
 
-@router.patch("/admin/orders/{order_id}", response_model=OrderSingleResponse)
+@router.patch("/admin/orders/{order_id}", response_model=OrderDetailResponseBase)
 @GlobalException.catcher
 @required_plans(["admin"])
 @required_permissions(["read_all_orders_details", "update_all_orders_details"])
