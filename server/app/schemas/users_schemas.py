@@ -71,7 +71,6 @@ class UserCreateToken(BaseModel):
 
 
 class UserPerformerResponse(BaseModel):
-    id: int
     order_ids: list[int]
     username: str
     first_name: str

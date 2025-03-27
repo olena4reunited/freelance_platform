@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PerformerBase(BaseModel):
@@ -19,7 +19,9 @@ class TeamBase(BaseModel):
 class OrderCreate(BaseModel):
     name: str
     description: str
+    execution_type: str = Field(pattern=r"^(single|team)$")
     images_links: list[str] | None = None
+    tags: list[str]
 
 
 class OrderUpdate(OrderCreate):

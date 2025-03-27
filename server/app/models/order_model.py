@@ -1,6 +1,7 @@
 from typing import Any
 
 from psycopg2 import sql
+from psycopg2.extras import RealDictCursor
 
 from server.app.models._base_model import BaseModel
 from server.app.database.database import PostgresDatabase
@@ -77,8 +78,7 @@ class Order(BaseModel):
                         GROUP BY performer_id 
                     )
                     SELECT 
-                        spf.order_ids AS order_ids, 
-                        u.id AS id,
+                        spf.order_ids AS order_ids,
                         username,
                         first_name, 
                         last_name, 
@@ -90,6 +90,83 @@ class Order(BaseModel):
                 (customer_id, ),
                 is_all=True,
             )
+    
+    @staticmethod
+    def get_performer_teams_by_customer(
+        customer_id: int
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
+        with PostgresDatabase() as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                        SELECT
+                            ARRAY_AGG(id) AS order_ids,
+                            performer_team_id
+                        FROM orders
+                        WHERE customer_id = %s
+                        GROUP BY performer_team_id
+                    """,
+                    (customer_id, )
+                )
+                order_team = cursor.fetchone()
+
+                cursor.execute(
+                    """
+                       SELECT 
+                            name,
+                            lead_id
+                        FROM teams
+                        WHERE id = %s 
+                    """,
+                    (order_team.get("performer_team_id"), )
+                )
+                team = cursor.fetchone()
+
+                cursor.execute(
+                    """
+                        SELECT
+                            username,
+                            first_name,
+                            last_name,
+                            photo_link,
+                        FROM users
+                        WHERE id = %s
+                    """,
+                    (team.get("lead_id"), )
+                )
+                team_lead = cursor.fetchone()
+
+                cursor.execute(
+                    """
+                        WITH selected_team AS (
+                            SELECT user_id
+                            FROM teams_users
+                            WHERE team_id = %s
+                        ),
+                        selected_users AS (
+                            SELECT 
+                                username,
+                                first_name,
+                                last_name,
+                                photo_link
+                            FROM users
+                            WHERE id = ANY (SELECT user_id FROM selected_team)
+                        )
+                        SELECT 
+                            username, 
+                            first_name,
+                            last_name,
+                            photo_link
+                        FROM selected_users
+                    """,
+                    (order_team.get("performer_team_id"), )
+                )
+                performers = cursor.fetchall()
+
+        order_team.pop("performer_team_id")
+        order_team["name"] = team.get("name")
+        order_team["lead"] = team_lead
+        order_team["performers"] = performers
 
     @staticmethod
     def get_order_details(order_id: int) -> dict[str, Any] | None:
