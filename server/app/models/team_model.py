@@ -56,5 +56,5 @@ class Team(BaseModel):
         team.pop("lead_id")
         team["lead"] = lead
         team["performers"] = team_users
-        
+    
         return team
