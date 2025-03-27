@@ -138,6 +138,7 @@ class UserController:
             )
         
             return
+
         if redis_reset_passwd.hget(name="passwd_reset", key=confirm_data["email"]) != confirm_data["code"]:
             GlobalException.CustomHTTPException.raise_exception(
                 status_code=400,
@@ -158,7 +159,6 @@ class UserController:
         redis_reset_passwd.hdel("passwd_reset", confirm_data["email"])
         
         return User.update_user(user_id=user["id"], user_data={"password": hashed_password})
-
 
     @staticmethod
     def refresh_bearer_token(refresh_tkn: str) -> dict[str, Any]:
@@ -189,11 +189,28 @@ class UserController:
         return User.get_all_users(plan, limit)
 
     @staticmethod
-    def update_user(user_id: int, updated_user_data: dict) -> dict[str, Any]:
+    def update_user(
+        user_id: int,
+        updated_user_data: dict[str, Any]
+    ) -> dict[str, Any]:
         if "password" in updated_user_data:
-            updated_user_data["password"] = get_password_hash(updated_user_data["password"])
+            updated_user_data["password"] = get_password_hash(
+                updated_user_data["password"]
+            )
 
         return User.update_user(user_id, updated_user_data)
+    
+    @staticmethod
+    def update_user_details(
+        user_id: int,
+        updated_user_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        if "password" in updated_user_data:
+            updated_user_data["password"] = get_password_hash(
+                updated_user_data["password"]
+            )
+
+        return User.update_user_details(user_id, updated_user_data)
 
     @staticmethod
     def delete_user(user_id: int) -> None:

@@ -47,7 +47,7 @@ async def google_login(
     )
 
 
-@router.get("/google/callback")
+@router.get("/google/callback", response_model=Token)
 async def google_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
     plan = request.session.pop("plan", None)
@@ -136,7 +136,7 @@ def confirm_reset_password(data: PasswordResetConfirmRequest):
     return UserController.password_reset_confirm_request(data.model_dump())
 
 
-@router.patch("/me", response_model=UserResponse)
+@router.patch("/me", response_model=Union[UserResponse, UserResponsePerformer])
 @GlobalException.catcher
 @required_plans(["admin", "moderator", "customer", "performer"])
 @required_permissions(["read_own_user_details", "update_own_user_details"])
@@ -156,7 +156,12 @@ def update_user(
         .validate_password() \
         .validate_phone_number()
 
-    return UserController.update_user(user["id"], updated_user_data)
+    user = UserController.update_user(user["id"], updated_user_data)
+
+    if user.get("plan_name") == "performer":
+        UserController.add_performer_specialities(user)
+    
+    return user
 
 
 @router.delete("/me", status_code=204)
@@ -220,7 +225,12 @@ def edit_user(
         .validate_password() \
         .validate_phone_number()
 
-    return UserController.update_user(user_id, updated_user_data)
+    user = UserController.update_user_details(user_id, updated_user_data)
+
+    if user.get("plan_name") == "performer":
+        UserController.add_performer_specialities(user)
+
+    return user
 
 
 @router.delete("/{user_id}", status_code=204)
@@ -231,4 +241,6 @@ def delete_user(
         user_id: int,
         user : dict[str, Any] = Depends(get_current_user)
 ):
-    return UserController.delete_user(user_id)
+    UserController.delete_user(user_id)
+
+    return

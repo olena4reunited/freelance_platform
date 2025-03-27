@@ -231,15 +231,14 @@ class User(BaseModel):
         
         return user
 
-
     @staticmethod
-    def update_user(user_id: int, user_data: dict[str, Any]) -> dict[str, Any]:
+    def _update_user(user_data: dict[str, Any]) -> sql.Composed:
         set_clause = sql.SQL(", ").join(
             sql.SQL("{} = {}").format(sql.Identifier(k), sql.Placeholder(k))
             for k in user_data.keys()
         )
 
-        query = sql.SQL("""
+        return sql.SQL("""
             UPDATE users
             SET {set_clause}
             WHERE id = {id_placeholder}
@@ -247,6 +246,10 @@ class User(BaseModel):
             set_clause=set_clause,
             id_placeholder=sql.Placeholder("user_id"),
         )
+
+    @staticmethod
+    def update_user(user_id: int, user_data: dict[str, Any]) -> dict[str, Any]:
+        query = User._update_user(user_data)
 
         with PostgresDatabase(on_commit=True) as db:
             with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -271,6 +274,108 @@ class User(BaseModel):
                         FROM users u
                         INNER JOIN plans p ON u.plan_id = p.id 
                         WHERE u.id = %s;
+                    """,
+                    (user_id, ),
+                )
+
+                return cursor.fetchone()
+    
+    @staticmethod
+    def update_user_performer(user_id: int, user_data: dict[str, Any]) -> dict[str, Any]:
+        query = User._update_user(user_data)
+
+        with PostgresDatabase(on_commit=True) as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    query,
+                    {"user_id": user_id, **user_data}
+                )
+
+                user_specialities = user_data.get("specialities", None)
+
+                if user_specialities:
+                    cursor.execute(
+                        """
+                            DELETE FROM users_specialities 
+                            WHERE user_id = %s
+                        """,
+                        (user_id, )
+                    )
+
+                    cursor.execute(
+                        """
+                            WITH selected_specialities AS (
+                                SELECT id
+                                FROM specialities
+                                WHERE name = ANY(%s)
+                            )
+                            INSERT INTO users_specialities (user_id, speciality_id)
+                            SELECT %s, ssp.id
+                            FROM selected_specialities ssp
+                        """,
+                        (user_specialities, user_id)
+                    )
+                
+                cursor.execute(
+                    """
+                        SELECT 
+                            u.id AS id,
+                            first_name,
+                            last_name,
+                            username,
+                            email,
+                            phone_number,
+                            photo_link,
+                            description,
+                            balance,
+                            rating,
+                            pln.name AS plan_name,
+                            is_verified,
+                            block_expired,
+                            delete_date,
+                            is_blocked
+                        FROM users u
+                        JOIN plans pln
+                            ON pln.id = u.plan_id
+                        WHERE u.id = %s 
+                    """,
+                    (user_id, )
+                )
+                
+                return cursor.fetchone()
+
+    @staticmethod
+    def update_user_details(user_id: int, user_data: dict[str, Any]) -> dict[str, Any]:
+        query = User._update_user(user_data)
+
+        with PostgresDatabase(on_commit=True) as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    query,
+                    {"user_id": user_id, **user_data},
+                )
+                cursor.execute(
+                    """
+                        SELECT 
+                            u.id AS id,
+                            first_name,
+                            last_name,
+                            username,
+                            email,
+                            phone_number,
+                            photo_link,
+                            description,
+                            balance,
+                            rating,
+                            pln.name AS plan_name,
+                            is_verified,
+                            block_expired,
+                            delete_date,
+                            is_blocked
+                        FROM users u
+                        JOIN plans pln
+                            ON pln.id = u.plan_id
+                        WHERE u.id = %s 
                     """,
                     (user_id, ),
                 )
