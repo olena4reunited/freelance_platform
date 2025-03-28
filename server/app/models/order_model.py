@@ -103,70 +103,73 @@ class Order(BaseModel):
                             ARRAY_AGG(id) AS order_ids,
                             performer_team_id
                         FROM orders
-                        WHERE customer_id = %s
+                        WHERE customer_id = %s AND performer_team_id IS NOT NULL
                         GROUP BY performer_team_id
                     """,
                     (customer_id, )
                 )
-                order_team = cursor.fetchone()
+                order_teams = cursor.fetchall()
 
-                cursor.execute(
-                    """
-                       SELECT 
-                            name,
-                            lead_id
-                        FROM teams
-                        WHERE id = %s 
-                    """,
-                    (order_team.get("performer_team_id"), )
-                )
-                team = cursor.fetchone()
+                for order_team in order_teams:
+                    cursor.execute(
+                        """
+                        SELECT 
+                                name,
+                                lead_id
+                            FROM teams
+                            WHERE id = %s 
+                        """,
+                        (order_team.get("performer_team_id"), )
+                    )
+                    team = cursor.fetchone()
 
-                cursor.execute(
-                    """
-                        SELECT
-                            username,
-                            first_name,
-                            last_name,
-                            photo_link,
-                        FROM users
-                        WHERE id = %s
-                    """,
-                    (team.get("lead_id"), )
-                )
-                team_lead = cursor.fetchone()
-
-                cursor.execute(
-                    """
-                        WITH selected_team AS (
-                            SELECT user_id
-                            FROM teams_users
-                            WHERE team_id = %s
-                        ),
-                        selected_users AS (
-                            SELECT 
+                    cursor.execute(
+                        """
+                            SELECT
                                 username,
                                 first_name,
                                 last_name,
                                 photo_link
                             FROM users
-                            WHERE id = ANY (SELECT user_id FROM selected_team)
-                        )
-                        SELECT 
-                            username, 
-                            first_name,
-                            last_name,
-                            photo_link
-                        FROM selected_users
-                    """,
-                    (order_team.get("performer_team_id"), )
-                )
-                performers = cursor.fetchall()
+                            WHERE id = %s
+                        """,
+                        (team.get("lead_id"), )
+                    )
+                    team_lead = cursor.fetchone()
 
-        order_team.pop("performer_team_id")
-        order_team["name"] = team.get("name")
-        order_team["lead"] = team_lead
-        order_team["performers"] = performers
+                    cursor.execute(
+                        """
+                            WITH selected_team AS (
+                                SELECT user_id
+                                FROM teams_users
+                                WHERE team_id = %s
+                            ),
+                            selected_users AS (
+                                SELECT 
+                                    username,
+                                    first_name,
+                                    last_name,
+                                    photo_link
+                                FROM users
+                                WHERE id = ANY (SELECT user_id FROM selected_team)
+                            )
+                            SELECT 
+                                username, 
+                                first_name,
+                                last_name,
+                                photo_link
+                            FROM selected_users
+                        """,
+                        (order_team.get("performer_team_id"), )
+                    )
+                    performers = cursor.fetchall()
+
+                    order_team.pop("performer_team_id")
+                    order_team["name"] = team.get("name")
+                    order_team["lead"] = team_lead
+                    order_team["performers"] = performers
+
+            return order_teams
 
     @staticmethod
     def get_order_details(order_id: int) -> dict[str, Any] | None:
@@ -213,65 +216,97 @@ class Order(BaseModel):
             order_data: dict[str, Any],
     ) -> dict[str, Any] | None:
         with PostgresDatabase(on_commit=True) as db:
-            with db.connection.cursor() as cursor:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     """
                         INSERT INTO orders 
-                            (name, description, customer_id)
-                        VALUES (%s, %s, %s)
+                            (name, description, customer_id, execution_type)
+                        VALUES (%s, %s, %s, %s)
                         RETURNING id;
                     """,
-                    (order_data["name"], order_data["description"], customer_id),
-                )
-                order_id = cursor.fetchone()
-                counter = 1
-
-                for image_link in order_data["images_links"]:
-                    cursor.execute(
-                        """
-                            INSERT INTO images (image_link)
-                            VALUES (%s)
-                            RETURNING id;
-                        """,
-                        (image_link,),
-                    )
-                    image_id = cursor.fetchone()
-
-                    cursor.execute(
-                        """
-                            INSERT INTO orders_images 
-                                (order_id, image_id, is_main)
-                            VALUES (%s, %s, %s)
-                        """,
-                        (order_id, image_id, True if counter == 1 else False),
-                    )
-                    counter += 1
-
-            return db.fetch(
-                """
-                    WITH selected_images AS (
-                        SELECT 
-                            oi.order_id AS order_id, 
-                            COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
-                        FROM orders_images oi 
-                        LEFT JOIN images i 
-                            ON oi.image_id = i.id 
-                        GROUP BY oi.order_id
-                    )
-                    SELECT 
-                        o.id AS id, 
-                        name, 
-                        description, 
+                    (
+                        order_data["name"], 
+                        order_data["description"], 
                         customer_id, 
-                        performer_id, 
-                        COALESCE(si.images_links, '{}') AS images_links
-                    FROM orders o
-                    LEFT JOIN selected_images si 
-                        ON o.id = si.order_id
-                    WHERE o.id = %s;
-                """,
-                (order_id,)
-            )
+                        order_data["execution_type"]
+                    ),
+                )
+                order = cursor.fetchone()
+
+                if order_data["images_links"]:
+                    cursor.executemany(
+                        """
+                        INSERT INTO images (image_link)
+                        VALUES (%s)
+                        RETURNING id;
+                        """,
+                        [(link,) for link in order_data["images_links"]]
+                    )
+
+                    image_ids = [row["id"] for row in cursor.fetchall()]
+
+                    order_images_data = [
+                        (order["id"], image_id, index == 0) for index, image_id in enumerate(image_ids)
+                    ]
+
+                    cursor.executemany(
+                        """
+                            INSERT INTO orders_images (order_id, image_id, is_main)
+                            VALUES (%s, %s, %s);
+                        """,
+                        order_images_data
+                    )
+
+                cursor.execute(
+                    """
+                        WITH selected_tags AS (
+                            SELECT id 
+                            FROM tags
+                            WHERE name = ANY(%s)
+                        )
+                        INSERT INTO orders_tags (order_id, tag_id)
+                        SELECT %s, id
+                        FROM selected_tags;
+                    """,
+                    (order_data["tags"], order["id"], )
+                )
+
+                cursor.execute(
+                    """
+                        SELECT 
+                            o.id AS id,
+                            o.name AS name,
+                            o.description AS description,
+                            o.customer_id AS customer_id,
+                            o.execution_type AS execution_type,
+                            o.performer_id AS performer_id,
+                            o.performer_team_id AS performer_team_id,
+                            ARRAY_AGG(DISTINCT i.image_link) 
+                                FILTER 
+                                    (WHERE i.image_link IS NOT NULL) 
+                                AS images_links,
+                            ARRAY_AGG(t.name) AS tags
+                        FROM orders o
+                        LEFT JOIN orders_images oi
+                            ON oi.order_id = o.id
+                        LEFT JOIN images i
+                            ON oi.image_id = i.id
+                        LEFT JOIN orders_tags ot
+                            ON ot.order_id = o.id
+                        LEFT JOIN tags t
+                            ON ot.tag_id = t.id
+                        WHERE o.id = %s
+                        GROUP BY 
+                            o.id, 
+                            o.name, 
+                            o.description, 
+                            o.customer_id,
+                            o.performer_id, 
+                            o.performer_team_id;
+                    """,
+                    (order["id"], )
+                )
+                return cursor.fetchone()
 
     @staticmethod
     def update_order_by_id(
@@ -279,45 +314,71 @@ class Order(BaseModel):
             order_data: dict[str, Any] | None
     ) -> dict[str, Any] | None:
         with PostgresDatabase(on_commit=True) as db:
-            with db.connection.cursor() as cursor:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 if order_data.get("images_links"):
                     cursor.execute(
                         """
                             DELETE FROM orders_images
                             WHERE order_id = %s
                         """,
-                        (order_id,)
+                        (order_id, )
                     )
 
-                    counter = 1
+                    cursor.executemany(
+                        """
+                        INSERT INTO images (image_link)
+                        VALUES (%s)
+                        RETURNING id;
+                        """,
+                        [(link,) for link in order_data["images_links"]]
+                    )
 
-                    for image_link in order_data["images_links"]:
-                        cursor.execute(
-                            """
-                                INSERT INTO images (image_link)
-                                VALUES (%s)
-                                RETURNING id;
-                            """,
-                            (image_link,),
-                        )
-                        image_id = cursor.fetchone()
+                    image_ids = [row["id"] for row in cursor.fetchall()]
 
-                        cursor.execute(
-                            """
-                                INSERT INTO orders_images 
-                                    (order_id, image_id, is_main)
-                                VALUES (%s, %s, %s)
-                            """,
-                            (order_id, image_id, True if counter == 1 else False),
-                        )
-                        counter += 1
+                    order_images_data = [
+                        (order_id, image_id, index == 0) for index, image_id in enumerate(image_ids)
+                    ]
 
-                order_data.pop("images_links", None)
+                    cursor.executemany(
+                        """
+                            INSERT INTO orders_images (order_id, image_id, is_main)
+                            VALUES (%s, %s, %s);
+                        """,
+                        order_images_data
+                    )
+
+                    order_data.pop("images_links")
+
+                if order_data.get("tags"):
+                    cursor.execute(
+                        """
+                            DELETE FROM orders_tags
+                            WHERE order_id = %s
+                        """,
+                        (order_id, )
+                    )
+
+                    cursor.execute(
+                        """
+                            WITH selected_tags AS (
+                                SELECT id 
+                                FROM tags
+                                WHERE name = ANY(%s)
+                            )
+                            INSERT INTO orders_tags (order_id, tag_id)
+                            SELECT %s, id
+                            FROM selected_tags;
+                        """,
+                        (order_data["tags"], order_id, )
+                    )
+
+                    order_data.pop("tags")
 
                 set_clause = sql.SQL(", ").join(
                     sql.SQL("{} = {}").format(sql.Identifier(k), sql.Placeholder(k))
                     for k in order_data.keys()
                 )
+
                 cursor.execute(
                     sql.SQL("""
                         UPDATE orders 
@@ -332,27 +393,38 @@ class Order(BaseModel):
 
                 cursor.execute(
                     """
-                        WITH selected_images AS (
-                            SELECT 
-                                oi.order_id AS order_id, 
-                                COALESCE(ARRAY_AGG(i.image_link), '{}') AS images_links
-                            FROM orders_images oi 
-                            LEFT JOIN images i 
-                                ON oi.image_id = i.id 
-                            GROUP BY oi.order_id
-                        )
                         SELECT 
-                            o.id AS id, 
-                            name, 
-                            description, 
-                            customer_id, 
-                            performer_id, 
-                            COALESCE(si.images_links, '{}') AS images_links
+                            o.id AS id,
+                            o.name AS name,
+                            o.description AS description,
+                            o.customer_id AS customer_id,
+                            o.execution_type AS execution_type,
+                            o.performer_id AS performer_id,
+                            o.performer_team_id AS performer_team_id,
+                            ARRAY_AGG(DISTINCT i.image_link) 
+                                FILTER 
+                                    (WHERE i.image_link IS NOT NULL) 
+                                AS images_links,
+                            ARRAY_AGG(t.name) AS tags
                         FROM orders o
-                        LEFT JOIN selected_images si 
-                            ON o.id = si.order_id
-                        WHERE o.id = %s;
+                        LEFT JOIN orders_images oi
+                            ON oi.order_id = o.id
+                        LEFT JOIN images i
+                            ON oi.image_id = i.id
+                        LEFT JOIN orders_tags ot
+                            ON ot.order_id = o.id
+                        LEFT JOIN tags t
+                            ON ot.tag_id = t.id
+                        WHERE o.id = %s
+                        GROUP BY 
+                            o.id, 
+                            o.name, 
+                            o.description, 
+                            o.customer_id,
+                            o.performer_id, 
+                            o.performer_team_id;
                     """,
                     (order_id,)
                 )
+
                 return cursor.fetchone()

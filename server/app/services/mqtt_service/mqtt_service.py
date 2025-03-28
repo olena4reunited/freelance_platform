@@ -108,6 +108,8 @@ class MQTTService:
                 "order_id": order_data["id"],
                 "order_name": order_data["name"],
                 "order_description": order_data["description"],
+                "order_execution_type": order_data["execution_type"],
+                "order_tags": order_data["tags"],
                 "order_customer": {
                     "user_id": user_data["id"],
                     "username": user_data["username"]
@@ -125,7 +127,7 @@ class MQTTService:
         if res.rc != 0:
             logger.error(
                 "Error was ocured while publication orders/new to MQTT broker! " \
-                "Publication proceessin result reason_code: \x1b[1m%s\x1b[0m",
+                "Publication proceessing result reason_code: \x1b[1m%s\x1b[0m",
                 res.rc
             )
             return False

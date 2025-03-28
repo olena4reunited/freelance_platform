@@ -46,12 +46,15 @@ def get_order_list(user: dict[str, Any] = Depends(get_current_user)):
     return OrderCustomerController.get_all_customer_orders(user.get("id"))
 
 
-@router.get("/customer/me/performers", response_model=Union[list[UserPerformerResponse], UserPerformerResponse])
+@router.get("/customer/me/performers")
 @GlobalException.catcher
 @required_plans(["customer"])
 @required_permissions(["read_own_orders", "read_own_orders_performers"])
-def get_order_list_performers(user: dict[str, Any] = Depends(get_current_user)):
-    return OrderCustomerController.get_all_customer_performers(user.get("id"))
+def get_order_list_performers(
+    performers: str = Query(None, regex="^(single|team)$"),
+    user: dict[str, Any] = Depends(get_current_user)
+):
+    return OrderCustomerController.get_all_customer_performers(user.get("id"), performers)
 
 
 @router.get("/customer/me/list/{order_id}", response_model=Union[OrderDetailResponseBase, OrderDetailResponseSingle, OrderDetailResponseTeam])
@@ -124,7 +127,7 @@ def delete_order(
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders"])
 def get_all_unassigned_orders(
-        limit: int = Query(10, description="number of output results"),
+        limit: int = Query(None, description="number of output results"),
         page: int = Query(1, description="pagination"),
         user: dict[str, Any] = Depends(get_current_user)
 ):

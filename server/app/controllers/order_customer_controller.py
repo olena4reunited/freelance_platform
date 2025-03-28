@@ -11,8 +11,16 @@ class OrderCustomerController:
         return Order.get_orders_by_customer(customer_id)
 
     @staticmethod
-    def get_all_customer_performers(customer_id: int) -> list[dict[str, Any]] | dict[str, Any] | None:
-        return Order.get_performers_by_customer(customer_id)
+    def get_all_customer_performers(
+        customer_id: int,
+        performers: str | None = None
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
+        if performers == "single":
+            return Order.get_performers_by_customer(customer_id)
+        if performers == "team":
+            return Order.get_performer_teams_by_customer(customer_id)
+        
+        return Order.get_performers_by_customer(customer_id) + Order.get_performer_teams_by_customer(customer_id)
 
     @staticmethod
     def get_order_details(order_id: int) -> dict[str, Any] | None:

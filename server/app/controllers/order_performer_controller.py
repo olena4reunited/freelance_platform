@@ -1,27 +1,36 @@
 from typing import Any
 
+from psycopg2 import sql
+
 from server.app.database.database import PostgresDatabase
 
 
 class OrderPerformerController:
     @staticmethod
-    def get_orders(limit: int = 10, page: int = 1) -> list[dict[str, Any]]:
-        offset = (page - 1) * limit
+    def get_orders(limit: int, page: int) -> list[dict[str, Any]]:
+        query = sql.SQL(
+            """
+                WITH selected_orders AS (
+                    SELECT id, name, description, customer_id
+                    FROM orders
+                    WHERE is_blocked IS NOT TRUE AND performer_id IS NULL
+                )
+                SELECT id, name, description, customer_id
+                FROM selected_orders
+            """
+        )
+
+        if limit:
+            page = page if page else 1
+            offset = (page - 1) * limit
+
+            query += sql.SQL("LIMIT {} OFFSET {}").format(sql.Placeholder(), sql.Placeholder())
+            params = (limit, offset)
 
         with PostgresDatabase() as db:
             return db.fetch(
-                """
-                    WITH selected_orders AS (
-                        SELECT id, name, description, customer_id
-                        FROM orders
-                        WHERE is_blocked IS NOT TRUE AND performer_id IS NULL
-                    )
-                    SELECT id, name, description, customer_id
-                    FROM selected_orders
-                    LIMIT %s
-                    OFFSET %s
-                """,
-                (limit, offset),
+                query,
+                params,
                 is_all=True
             )
 

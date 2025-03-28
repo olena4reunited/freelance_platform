@@ -24,10 +24,11 @@ class OrderCreate(BaseModel):
     tags: list[str]
 
 
-class OrderUpdate(OrderCreate):
+class OrderUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     images_links: list[str] | None = None
+    tags: list[str] | None = None
 
 
 class OrderListResponse(BaseModel):
@@ -70,6 +71,9 @@ class OrderListPerformerResponse(BaseModel):
     name: str
     description: str
     customer_id: int
+    execution_type: str
+    images_links: list[str] | None
+    tags: list[str]
 
 
 class OrderPerformerAssignedResponse(OrderListPerformerResponse):
