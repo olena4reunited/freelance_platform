@@ -3,49 +3,17 @@ from typing import Any
 from psycopg2 import sql
 
 from server.app.database.database import PostgresDatabase
+from server.app.models.order_model import Order
 
 
 class OrderPerformerController:
     @staticmethod
-    def get_orders(limit: int, page: int) -> list[dict[str, Any]]:
-        query = sql.SQL(
-            """
-                WITH selected_orders AS (
-                    SELECT id, name, description, customer_id
-                    FROM orders
-                    WHERE is_blocked IS NOT TRUE AND performer_id IS NULL
-                )
-                SELECT id, name, description, customer_id
-                FROM selected_orders
-            """
-        )
-
-        if limit:
-            page = page if page else 1
-            offset = (page - 1) * limit
-
-            query += sql.SQL("LIMIT {} OFFSET {}").format(sql.Placeholder(), sql.Placeholder())
-            params = (limit, offset)
-
-        with PostgresDatabase() as db:
-            return db.fetch(
-                query,
-                params,
-                is_all=True
-            )
+    def get_orders(user_id: int) -> list[dict[str, Any]]:
+        return Order.get_all_unassigned_orders(user_id)
 
     @staticmethod
     def assign_to_the_order(order_id: int, performer_id: int) -> dict[str, Any]:
-        with PostgresDatabase(on_commit=True) as db:
-            return db.fetch(
-                """
-                    UPDATE orders
-                    SET performer_id = %s
-                    WHERE id = %s
-                    RETURNING id, name, description, customer_id, performer_id
-                """,
-                (performer_id, order_id,),
-            )
+        ...
 
     @staticmethod
     def get_assigned_orders(performer_id: int) -> list[dict[str, Any]] | dict[str, Any] | None:

@@ -127,11 +127,9 @@ def delete_order(
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders"])
 def get_all_unassigned_orders(
-        limit: int = Query(None, description="number of output results"),
-        page: int = Query(1, description="pagination"),
         user: dict[str, Any] = Depends(get_current_user)
 ):
-    return OrderPerformerController.get_orders(limit=limit, page=page)
+    return OrderPerformerController.get_orders(user.get("id"))
 
 
 @router.post("/performer/list/{order_id}", response_model=OrderPerformerAssignedResponse)

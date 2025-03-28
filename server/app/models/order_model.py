@@ -5,6 +5,7 @@ from psycopg2.extras import RealDictCursor
 
 from server.app.models._base_model import BaseModel
 from server.app.database.database import PostgresDatabase
+from server.app.utils.exceptions import GlobalException
 
 
 class Order(BaseModel):
@@ -428,3 +429,110 @@ class Order(BaseModel):
                 )
 
                 return cursor.fetchone()
+
+
+    @staticmethod
+    def get_all_unassigned_orders(user_id: int) -> dict[str, Any]:
+        with PostgresDatabase() as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                        WITH selected_order_ids AS (
+                            SELECT DISTINCT(ot.order_id) AS order_id
+                            FROM users_specialities usp
+                            JOIN specialities_tags spt
+                                ON spt.speciality_id = usp.speciality_id
+                            JOIN orders_tags ot
+                                ON ot.tag_id = spt.tag_id
+                            WHERE usp.user_id = %s
+                        )
+                        SELECT 
+                            o.id AS id,
+                            o.name AS name,
+                            o.description AS description,
+                            o.customer_id AS customer_id,
+                            o.execution_type AS execution_type,
+                            ARRAY_AGG(DISTINCT i.image_link) 
+                                FILTER 
+                                    (WHERE i.image_link IS NOT NULL) 
+                                AS images_links,
+                            ARRAY_AGG(t.name) AS tags
+                        FROM orders o
+                        LEFT JOIN orders_images oi
+                            ON oi.order_id = o.id
+                        LEFT JOIN images i
+                            ON oi.image_id = i.id
+                        LEFT JOIN orders_tags ot
+                            ON ot.order_id = o.id
+                        LEFT JOIN tags t
+                            ON ot.tag_id = t.id
+                        WHERE 
+                            o.id = ANY(SELECT order_id FROM selected_order_ids)
+                            AND o.is_blocked IS NOT TRUE
+                            AND o.blocked_until IS NULL
+                            AND o.performer_id IS NULL
+                            AND o.performer_team_id IS NULL
+                        GROUP BY 
+                            o.id, 
+                            o.name, 
+                            o.description, 
+                            o.customer_id,
+                            o.performer_id, 
+                            o.performer_team_id;
+                    """,
+                    (user_id, )
+                )
+                return cursor.fetchall()
+
+    @staticmethod
+    def assign_single_performer_to_order(order_id: int, performer_id: int) -> dict[str, Any]:
+        with PostgresDatabase(on_commit=True) as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                        SELECT 
+                            o.id AS id,
+                            o.name AS name,
+                            o.description AS description,
+                            o.customer_id AS customer_id,
+                            o.execution_type AS execution_type,
+                            o.performer_id AS performer_id,
+                            o.performer_team_id AS performer_team_id,
+                            ARRAY_AGG(DISTINCT i.image_link) 
+                                FILTER 
+                                    (WHERE i.image_link IS NOT NULL) 
+                                AS images_links,
+                            ARRAY_AGG(t.name) AS tags
+                        FROM orders o
+                        LEFT JOIN orders_images oi
+                            ON oi.order_id = o.id
+                        LEFT JOIN images i
+                            ON oi.image_id = i.id
+                        LEFT JOIN orders_tags ot
+                            ON ot.order_id = o.id
+                        LEFT JOIN tags t
+                            ON ot.tag_id = t.id
+                        WHERE o.id = %s
+                        GROUP BY 
+                            o.id, 
+                            o.name, 
+                            o.description, 
+                            o.customer_id,
+                            o.performer_id, 
+                            o.performer_team_id;
+                    """,
+                    (order_id, )
+                )
+                order = cursor.fetchone()
+
+                if order["execution_type"] == "single" and order.get("performer_id"):
+                    GlobalException.CustomHTTPException.raise_exception(
+                        status_code=403,
+                        detail=(
+                            "You are not allowed to assign yourself to selected order. " \
+                            "The order is already accepted to work by another user"
+                        )
+                    )
+                if order["execution_type"] == "team" and order.get("performer_team_id"):
+                    cursor.execute("")
+ 

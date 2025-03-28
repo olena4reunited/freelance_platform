@@ -6,7 +6,6 @@ from psycopg2 import sql
 
 from server.app.database.database import PostgresDatabase
 from server.app.models._base_model import BaseModel
-from server.app.models.sql_builder import SQLBuilder
 
 
 class UserPlanEnum(Enum):

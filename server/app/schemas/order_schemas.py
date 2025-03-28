@@ -12,7 +12,7 @@ class PerformerBase(BaseModel):
 
 class TeamBase(BaseModel):
     name: str
-    lead: PerformerBase
+    lead: PerformerBase | None
     performers: list[PerformerBase] | PerformerBase
 
 
@@ -77,7 +77,11 @@ class OrderListPerformerResponse(BaseModel):
 
 
 class OrderPerformerAssignedResponse(OrderListPerformerResponse):
-    performer_id: int
+    performer: PerformerBase
+
+
+class OrderPerformerTeamAssignedResponse(OrderListPerformerResponse):
+    team: TeamBase
 
 
 class OrderAdminUpdate(BaseModel):
