@@ -171,7 +171,7 @@ class UserController:
     @staticmethod
     def get_user_by_token(access_tkn: str) -> dict[str, Any]:
         username = verify_token(access_tkn)["content"]["username"]
-        user = User.get_user_by_field("username", username)
+        user = User.get_user_by_field_extended("username", username)
 
         return user
 

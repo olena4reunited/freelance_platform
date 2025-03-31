@@ -46,6 +46,39 @@ class User(BaseModel):
             )
 
     @staticmethod
+    def get_user_by_field_extended(field: str, value: str | int) -> dict[str, Any]:
+        query = sql.SQL(
+            """
+                SELECT 
+                    u.id AS id,
+                    first_name,
+                    last_name,
+                    username,
+                    email,
+                    phone_number,
+                    photo_link,
+                    description,
+                    balance,
+                    rating,
+                    pln.name AS plan_name,
+                    is_verified,
+                    block_expired,
+                    delete_date,
+                    is_blocked
+                FROM users u
+                JOIN plans pln
+                    ON pln.id = u.plan_id
+                WHERE {} = {} 
+            """
+        ).format(sql.Identifier(field), sql.Placeholder())
+
+        with PostgresDatabase() as db:
+            return db.fetch(
+                query,
+                (value, )
+            )
+
+    @staticmethod
     def get_user_by_field(field: str, value: str | int) -> dict[str, Any]:
         query = sql.SQL(
             """
