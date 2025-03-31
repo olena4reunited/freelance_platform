@@ -9,8 +9,6 @@ from server.app.schemas.order_schemas import (
     OrderDetailResponseBase,
     OrderDetailResponseSingle,
     OrderDetailResponseTeam,
-    OrderListPerformerResponse,
-    OrderPerformerAssignedResponse,
     OrderAdminUpdate,
     OrderSingleResponseExtended
 )
@@ -122,7 +120,7 @@ def delete_order(
     return OrderCustomerController.get_all_customer_orders(user.get("id"))
 
 
-@router.get("/performer/list", response_model=Union[list[OrderListPerformerResponse], OrderListPerformerResponse])
+@router.get("/performer/list", response_model=Union[list[OrderDetailResponseBase], OrderDetailResponseBase])
 @GlobalException.catcher
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders"])
@@ -132,7 +130,7 @@ def get_all_unassigned_orders(
     return OrderPerformerController.get_orders(user.get("id"))
 
 
-@router.post("/performer/list/{order_id}", response_model=OrderPerformerAssignedResponse)
+@router.post("/performer/list/{order_id}", response_model=Union[OrderDetailResponseSingle, OrderDetailResponseTeam])
 @GlobalException.catcher
 @required_plans(["performer"])
 @required_permissions(["read_unassigned_orders", "assign_themself_to_order"])
@@ -146,7 +144,7 @@ def assign_themself_to_order(
     return OrderPerformerController.assign_to_the_order(order_id=order_id, performer_id=user.get("id"))
 
 
-@router.get("/performer/me/list", response_model=Union[list[OrderPerformerAssignedResponse], OrderPerformerAssignedResponse])
+@router.get("/performer/me/list", response_model=Union[list[OrderDetailResponseBase], OrderDetailResponseBase])
 @GlobalException.catcher
 @required_plans(["performer"])
 @required_permissions(["read_own_orders"])

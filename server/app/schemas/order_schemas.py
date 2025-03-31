@@ -12,7 +12,7 @@ class PerformerBase(BaseModel):
 
 class TeamBase(BaseModel):
     name: str
-    lead: PerformerBase | None
+    lead: PerformerBase | None = None
     performers: list[PerformerBase] | PerformerBase
 
 
@@ -64,24 +64,6 @@ class OrderDetailResponseTeam(OrderDetailResponseBase):
 class OrderSingleResponseExtended(OrderDetailResponseBase):
     blocked_until: datetime
     is_blocked: bool
-
-
-class OrderListPerformerResponse(BaseModel):
-    id: int
-    name: str
-    description: str
-    customer_id: int
-    execution_type: str
-    images_links: list[str] | None
-    tags: list[str]
-
-
-class OrderPerformerAssignedResponse(OrderListPerformerResponse):
-    performer: PerformerBase
-
-
-class OrderPerformerTeamAssignedResponse(OrderListPerformerResponse):
-    team: TeamBase
 
 
 class OrderAdminUpdate(BaseModel):
