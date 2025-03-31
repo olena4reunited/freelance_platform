@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS users_specialities (
 CREATE TABLE IF NOT EXISTS teams (
     id SERIAL PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
-    lead_id INTEGER NOT NULL,
+    lead_id INTEGER,
     customer_id INTEGER NOT NULL,
     FOREIGN KEY (lead_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE
