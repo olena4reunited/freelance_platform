@@ -4,6 +4,7 @@ from functools import wraps
 import traceback
 
 import socketio
+from psycopg2.extras import RealDictCursor
 
 from server.app.database.database import PostgresDatabase
 from server.app.controllers.user_controller import UserController
@@ -105,20 +106,21 @@ async def create_chat(sid, data,  *args, **kwargs):
         return
 
     sender = session.get("user")
-    receiver_id = data["receiver_id"]
+    order_id = data.get("order_id")
     
-    if not receiver_id:
+    if not order_id:
         await sio.emit(
             "socketio_error",
             {
                 "status": "error",
-                "detail": "Receiver id is missing",
+                "detail": "Order id is missing",
             }
         )
         logger.error(
             "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
-            "%sCurrent user: id=%s trying to create chat with no receiver_id. " \
-            "Receiver_id should pe passed to succesful chat creation",
+            "%sCurrent user: id=%s trying to create chat with no order_id. " \
+            "Chat must be connected to the order and " \
+            "order_id should pe passed to succesful chat creation",
             sid,
             " "*10,
             sender["id"]
@@ -127,84 +129,115 @@ async def create_chat(sid, data,  *args, **kwargs):
         return
 
     with PostgresDatabase(on_commit=True) as db:
-        with db.connection.cursor() as cursor:
+        with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
             sender_id = sender.get("id")
             sender_plan = sender.get("plan_name")
 
             cursor.execute(
                 """
-                    SELECT id
-                    FROM chats
-                    WHERE (user_one_id = %s AND user_two_id = %s)
-                        OR (user_one_id = %s AND user_two_id = %s)
+                    SELECT ch.id AS id
+                    FROM chats ch
+                    JOIN chats_users chu
+                        ON chu.chat_id = ch.id
+                    WHERE ch.order_id = %s
+                        AND chu.user_id = %s;
                 """,
-                (sender_id, receiver_id, receiver_id, sender_id)
+                (order_id, sender["id"], )
             )
-            chat_id = cursor.fetchone()
-
-            if chat_id:
-                await sio.enter_room(sid, room=f"chat_{chat_id}")
+            chat_row = cursor.fetchone()
+        
+            if chat_row:
+                await sio.enter_room(sid, room=f"chat_{chat_row.get('id')}")
                 await sio.emit(
                     "socketio_error",
                     {
                         "status": "error",
-                        "detail": "Chat with selected user already exists",
+                        "detail": "Chat on selected order is already exists",
                     },
                     to=sid,
                 )
                 logger.warning(
                     "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
-                    "%sCurrent user: id=%s has already created chat with selected user: id=%s. " \
+                    "%sCurrent user: id=%s has already created chat connected to selected order: id=%s. " \
                     "User will be joined to the chat: id=%s", 
                     sid,
                     " "*10,
                     sender_id,
-                    receiver_id,
-                    chat_id[0]
+                    order_id,
+                    chat_id["id"]
                 )
                 return
 
             if sender_plan in ["customer", "performer"]:
                 cursor.execute(
                     """
-                        SELECT id
-                        FROM orders
-                        WHERE (customer_id = %s AND performer_id = %s) 
-                            OR (customer_id = %s AND performer_id = %s) 
+                        SELECT 1
+                        FROM orders o
+                        LEFT JOIN teams t
+                            ON t.id = o.performer_team_id
+                        LEFT JOIN teams_users tu
+                            ON tu.team_id = t.id
+                        WHERE o.id = %s
+                            AND (o.performer_id = %s OR tu.user_id = %s OR o.customer_id = %s) 
                     """,
-                    (sender_id, receiver_id, receiver_id, sender_id)
+                    (order_id, sender_id, sender_id, sender_id, )
                 )
                 if not cursor.fetchone():
                     await sio.emit(
                         "socketio_error",
                         {
                             "status": "error",
-                            "detail": "You and selected user aren't joined by order",
+                            "detail": "You are not allowed to create chat by selected order",
                         },
                         to=sid,
                     )
                     logger.error(
                         "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
-                        "%sCurrent user: id=%s has are not joined by order with selected user: id=%s. " \
-                        "Chat creation with selected user is forbidden for current user.", 
+                        "%sCurrent user: id=%s has no connection with selected order: id=%s. " \
+                        "Chat creation by selected order is forbidden for current user.", 
                         sid,
                         " "*10,
                         sender_id,
-                        receiver_id
+                        order_id
                     )
                     await sio.disconnect(sid)
                     return
 
             cursor.execute(
                 """
-                    INSERT INTO chats (user_one_id, user_two_id, messages)
-                    VALUES (%s, %s, %s)
-                    RETURNING id;
+                    WITH inserted_chat AS (
+                        INSERT INTO chats (messages, order_id)
+                        VALUES (%s, %s)
+                        RETURNING id
+                    ),
+                    selected_users AS (
+                        SELECT o.customer_id AS user_id
+                        FROM orders o
+                        WHERE o.id = %s
+                        UNION
+                        SELECT o.performer_id AS user_id
+                        FROM orders o
+                        WHERE o.id = %s
+                        UNION
+                        SELECT tu.user_id AS user_id
+                        FROM orders o
+                        LEFT JOIN teams t
+                            ON t.id = o.performer_team_id
+                        LEFT JOIN teams_users tu
+                            ON tu.team_id = t.id
+                        WHERE o.id = %s
+                    )
+                    INSERT INTO chats_users (chat_id, user_id)
+                    SELECT ic.id, su.user_id
+                    FROM inserted_chat ic, selected_users su
+                    WHERE su.user_id IS NOT NULL
+                    RETURNING chat_id;
                 """,
-                (sender_id, receiver_id, "[]")
+                ("[]", order_id, order_id, order_id, order_id, )
             )
-            chat_id = cursor.fetchone()[0]
-        
+            chat_row = cursor.fetchone()
+            chat_id = chat_row.get("chat_id")
+
         if not chat_id:
             await sio.emit(
                 "socketio_error",
@@ -216,12 +249,12 @@ async def create_chat(sid, data,  *args, **kwargs):
             )
             logger.error(
                 "Error while create_chat in socketio connection with sid \x1b[1m%s\x1b[0m:\n" \
-                "%sCurrent user: id=%s was trying to create chat with selected user: id=%s " \
+                "%sCurrent user: id=%s was trying to create chat by selected order: id=%s " \
                 "but error was occured.", 
                 sid,
                 " "*10,
                 sender_id,
-                receiver_id
+                order_id
             )
             return
         
@@ -261,10 +294,13 @@ async def join_chat(sid, data,  *args, **kwargs):
             cursor.execute(
                 """
                     SELECT 1
-                    FROM chats
-                    WHERE id = %s AND (user_one_id = %s OR user_two_id = %s)
+                    FROM chats ch
+                    JOIN chats_users chu
+                        ON chu.chat_id = ch.id
+                    WHERE ch.id = %s 
+                        AND chu.user_id = %s;
                 """,
-                (chat_id, user_id, user_id)
+                (chat_id, user_id, )
             )
             
             if not cursor.fetchone():
@@ -294,13 +330,11 @@ async def join_chat(sid, data,  *args, **kwargs):
                 """,
                 (chat_id, )
             )
-            chat = cursor.fetchone()
+            chat_row = cursor.fetchone()
+            chat_messages = chat_row.get("messages")
 
     await sio.enter_room(sid, room=f"chat_{chat_id}")
-
-    messages = chat[0] if chat else []
-
-    await sio.emit("chat_history", {"messages": messages}, to=sid)
+    await sio.emit("chat_history", {"messages": chat_messages}, to=sid)
 
 
 @sio.event
@@ -377,10 +411,13 @@ async def send_message(sid, data,  *args, **kwargs):
             cursor.execute(
                 """
                     SELECT 1
-                    FROM chats
-                    WHERE id = %s AND (user_one_id = %s OR user_two_id = %s)
+                    FROM chats ch
+                    JOIN chats_users chu
+                        ON chu.chat_id = ch.id
+                    WHERE ch.id = %s 
+                        AND chu.user_id = %s;
                 """,
-                (chat_id, user_id, user_id)
+                (chat_id, user_id, )
             )
             
             if not cursor.fetchone():
@@ -443,10 +480,13 @@ async def disconnect(sid, *args, **kwargs):
         with db.connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id FROM chats 
-                WHERE user_one_id = %s OR user_two_id = %s
+                    SELECT ch.id AS id
+                    FROM chats ch
+                    JOIN chats_users chu
+                        ON chu.chat_id = ch.id
+                    WHERE chu.user_id = %s;
                 """,
-                (user_id, user_id)
+                (user_id, )
             )
             chat_ids = [row[0] for row in cursor.fetchall()]
     
