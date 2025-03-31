@@ -6,13 +6,13 @@ import time
 prefixes = ["Hyper", "Elite", "Shadow", "Quantum", "NoName", "Hype", "Chaos", "Stealth", "Underground"]
 
 category_names = {
-    "development": ["Coders", "Hackers", "Engineers", "Byte Warriors", "Script Lords"],
-    "automation": ["Automators", "BotMasters", "Process Hackers"],
-    "design": ["Pixel Pushers", "UI Ninjas", "Creative Minds"],
-    "UX/UI": ["Experience Wizards", "Interface Gurus", "UX Architects"],
-    "writing": ["Wordsmiths", "Content Ninjas", "Text Hackers"],
-    "marketing": ["Brand Boosters", "Hype Lords", "Engagement Warriors"],
-    "random shit": ["Wildcard Crew", "Chaos Team", "No Rules Gang"]
+    "development": ["Coders", "Hackers", "Engineers", "Byte_Warriors", "Script_Lords"],
+    "automation": ["Automators", "BotMasters", "Process_Hackers"],
+    "design": ["Pixel_Pushers", "UI_Ninjas", "Creative_Minds"],
+    "UX/UI": ["Experience_Wizards", "Interface_Gurus", "UX_Architects"],
+    "writing": ["Wordsmiths", "Content_Ninjas", "Text_Hackers"],
+    "marketing": ["Brand_Boosters", "Hype_Lords", "Engagement_Warriors"],
+    "random shit": ["Wildcard_Crew", "Chaos_Team", "No_Rules_Gang"]
 }
 
 
