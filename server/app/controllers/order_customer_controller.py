@@ -20,7 +20,10 @@ class OrderCustomerController:
         if performers == "team":
             return Order.get_performer_teams_by_customer(customer_id)
         
-        return Order.get_performers_by_customer(customer_id) + Order.get_performer_teams_by_customer(customer_id)
+        return (
+            Order.get_performers_by_customer(customer_id) 
+            + Order.get_performer_teams_by_customer(customer_id)
+        )
 
     @staticmethod
     def get_order_details(order_id: int) -> dict[str, Any] | None:

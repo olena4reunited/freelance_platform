@@ -6,6 +6,7 @@ from psycopg2.extras import RealDictCursor
 from server.app.models._base_model import BaseModel
 from server.app.database.database import PostgresDatabase
 from server.app.utils.exceptions import GlobalException
+from server.app.utils.team_naming import generate_team_name
 
 
 class Order(BaseModel):
@@ -114,7 +115,7 @@ class Order(BaseModel):
                 for order_team in order_teams:
                     cursor.execute(
                         """
-                        SELECT 
+                            SELECT 
                                 name,
                                 lead_id
                             FROM teams
@@ -477,6 +478,7 @@ class Order(BaseModel):
                             o.name, 
                             o.description, 
                             o.customer_id,
+                            o.execution_type,
                             o.performer_id, 
                             o.performer_team_id;
                     """,
@@ -490,19 +492,321 @@ class Order(BaseModel):
             with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     """
-                        SELECT 
-                            o.id AS id,
-                            o.name AS name,
-                            o.description AS description,
-                            o.customer_id AS customer_id,
+                        SELECT DISTINCT
                             o.execution_type AS execution_type,
+                            o.customer_id AS customer_id,
                             o.performer_id AS performer_id,
                             o.performer_team_id AS performer_team_id,
-                            ARRAY_AGG(DISTINCT i.image_link) 
-                                FILTER 
-                                    (WHERE i.image_link IS NOT NULL) 
-                                AS images_links,
                             ARRAY_AGG(t.name) AS tags
+                        FROM orders o
+                        JOIN orders_tags ot
+                            ON ot.order_id = o.id
+                        JOIN specialities_tags spt
+                            ON spt.tag_id = ot.tag_id
+                        JOIN users_specialities usp
+                            ON usp.speciality_id = spt.speciality_id
+                        JOIN tags t
+                            ON t.id = ot.tag_id
+                        WHERE o.id = %s
+                            AND usp.user_id = %s
+                            AND o.is_blocked IS NOT TRUE
+                            AND o.blocked_until IS NULL
+                        GROUP BY 
+                            o.execution_type,
+                            o.customer_id,
+                            o.performer_id,
+                            o.performer_team_id
+                    """,
+                    (order_id, performer_id, )
+                )
+                order = cursor.fetchone()
+
+                if not order:
+                    GlobalException.CustomHTTPException.raise_exception(
+                        status_code=403,
+                        detail=(
+                            "Order is inaccessable for accepting to work"
+                        )
+                    )
+
+                    return
+                if order["execution_type"] == "single":
+                    if order.get("performer_id"):
+                        if order.get("performer_id") == performer_id:
+                            GlobalException.CustomHTTPException.raise_exception(
+                                status_code=400,
+                                detail=(
+                                    "You already assign yourself to selected order"
+                                )
+                            )
+                        
+                            return
+                        GlobalException.CustomHTTPException.raise_exception(
+                            status_code=403,
+                            detail=(
+                                "You are not allowed to assign yourself to selected order. " \
+                                "The order is already accepted to work by another user"
+                            )
+                        )
+
+                        return
+                    else:
+                        cursor.execute(
+                            """
+                                WITH updated_order AS (
+                                    UPDATE orders
+                                    SET performer_id = %s
+                                    WHERE id = %s
+                                    RETURNING 
+                                        id,
+                                        name,
+                                        description,
+                                        customer_id,
+                                        execution_type
+                                )
+                                SELECT 
+                                    uo.id AS id,
+                                    uo.name AS name,
+                                    uo.description AS description,
+                                    uo.customer_id AS customer_id,
+                                    uo.execution_type AS execution_type,
+                                    ARRAY_AGG(DISTINCT i.image_link) 
+                                        FILTER 
+                                            (WHERE i.image_link IS NOT NULL) 
+                                        AS images_links,
+                                    ARRAY_AGG(t.name) AS tags
+                                FROM updated_order uo
+                                LEFT JOIN orders_images oi
+                                    ON oi.order_id = uo.id
+                                LEFT JOIN images i
+                                    ON oi.image_id = i.id
+                                LEFT JOIN orders_tags ot
+                                    ON ot.order_id = uo.id
+                                LEFT JOIN tags t
+                                    ON ot.tag_id = t.id
+                                GROUP BY 
+                                    uo.id,
+                                    uo.name,
+                                    uo.description,
+                                    uo.customer_id,
+                                    uo.execution_type;
+                            """,
+                            (performer_id, order_id, )
+                        )
+                        result_order = cursor.fetchone()
+
+                        cursor.execute(
+                            """
+                                SELECT 
+                                    username,
+                                    first_name,
+                                    last_name,
+                                    photo_link
+                                FROM users
+                                WHERE id = %s;
+                            """,
+                            (performer_id, )
+                        )
+                        performer = cursor.fetchone()
+
+                        result_order["performer"] = performer
+
+                        return result_order
+                    
+                if order["execution_type"] == "team":
+                    if order.get("performer_team_id"):
+                        cursor.execute(
+                            """
+                                SELECT id
+                                FROM teams
+                                WHERE id = %s
+                                    AND lead_id IS NULL;
+                            """,
+                            (order["performer_team_id"], )
+                        )
+                        team_accessable = cursor.fetchone()
+
+                        if not team_accessable:
+                            GlobalException.CustomHTTPException.raise_exception(
+                                status_code=403,
+                                detail=(
+                                    "Order is inaccessable for accepting to work"
+                                )                                
+                            )
+                        else:
+                            cursor.execute(
+                                """
+                                    SELECT 
+                                        o.id AS id,
+                                        o.name AS name,
+                                        o.description AS description,
+                                        o.customer_id AS customer_id,
+                                        o.execution_type AS execution_type,
+                                        ARRAY_AGG(DISTINCT i.image_link) 
+                                            FILTER 
+                                                (WHERE i.image_link IS NOT NULL) 
+                                            AS images_links,
+                                        ARRAY_AGG(t.name) AS tags
+                                    FROM orders o
+                                    LEFT JOIN orders_images oi
+                                        ON oi.order_id = o.id
+                                    LEFT JOIN images i
+                                        ON oi.image_id = i.id
+                                    LEFT JOIN orders_tags ot
+                                        ON ot.order_id = o.id
+                                    LEFT JOIN tags t
+                                        ON ot.tag_id = t.id
+                                    GROUP BY 
+                                        o.id,
+                                        o.name,
+                                        o.description,
+                                        o.customer_id,
+                                        o.execution_type;
+                                """
+                            )
+                            result_order = cursor.fetchone()
+
+                            cursor.execute(
+                                """
+                                    SELECT name
+                                    FROM teams
+                                    WHERE id = %s
+                                """,
+                                (order["performer_team_id"], )
+                            )
+                            team = cursor.fetchone()
+
+                            cursor.execute(
+                                """
+                                    INSERT INTO teams_users (team_id, user_id)
+                                    VALUES (%s, %s);
+                                """,
+                                (order["performer_team_id"], performer_id, )
+                            )
+                            cursor.execute(
+                                """
+                                    SELECT 
+                                        username,
+                                        first_name,
+                                        last_name,
+                                        photo_link
+                                    FROM users u
+                                    JOIN teams_users tu
+                                        ON tu.user_id = u.id
+                                    WHERE tu.team_id = %s
+                                """,
+                                (order["performer_team_id"], )
+                            )
+                            team_users = cursor.fetchall()
+
+                            team["performers"] = team_users
+                            result_order["team"] = team
+
+                            return result_order
+                    else:
+                        cursor.execute(
+                            """
+                                SELECT 
+                                    o.id AS id,
+                                    o.name AS name,
+                                    o.description AS description,
+                                    o.customer_id AS customer_id,
+                                    o.execution_type AS execution_type,
+                                    ARRAY_AGG(DISTINCT i.image_link) 
+                                        FILTER 
+                                            (WHERE i.image_link IS NOT NULL) 
+                                        AS images_links,
+                                    ARRAY_AGG(t.name) AS tags
+                                FROM orders o
+                                LEFT JOIN orders_images oi
+                                    ON oi.order_id = o.id
+                                LEFT JOIN images i
+                                    ON oi.image_id = i.id
+                                LEFT JOIN orders_tags ot
+                                    ON ot.order_id = o.id
+                                LEFT JOIN tags t
+                                    ON ot.tag_id = t.id
+                                WHERE o.id = %s
+                                GROUP BY 
+                                    o.id,
+                                    o.name,
+                                    o.description,
+                                    o.customer_id,
+                                    o.execution_type;
+                            """,
+                            (order_id, )
+                        )
+                        result_order = cursor.fetchone()
+                        
+                        team_name = generate_team_name(order.get("tags"))
+
+                        cursor.execute(
+                            """
+                                WITH inserted_team AS (
+                                    INSERT INTO teams (name, customer_id)
+                                    VALUES (%s, %s)
+                                    RETURNING id, name
+                                ), 
+                                inserted_users AS (
+                                    INSERT INTO teams_users (team_id, user_id)
+                                    SELECT id, %s
+                                    FROM inserted_team
+                                    RETURNING team_id
+                                ),
+                                updated_order AS (
+                                    UPDATE orders
+                                    SET performer_team_id = (SELECT id from inserted_team)
+                                    WHERE id = %s
+                                )
+                                SELECT inserted_team.name AS name
+                                FROM inserted_team;
+                            """,
+                            (team_name, order["customer_id"], performer_id, order_id, )
+                        )
+                        team = cursor.fetchone()
+
+                        cursor.execute(
+                            """
+                                SELECT 
+                                    username,
+                                    first_name,
+                                    last_name,
+                                    photo_link
+                                FROM users
+                                WHERE id = %s;
+                            """,
+                            (performer_id, )
+                        )
+                        performer = cursor.fetchone()
+                        
+                        team["performers"] = performer
+                        result_order["team"] = team
+                        print(result_order)
+                        return result_order
+
+    @staticmethod
+    def get_assigned_orders_by_performer(performer_id: int) -> list[dict[str, Any]] | dict[str, Any] | None:
+        with PostgresDatabase() as db:
+            return db.fetch(
+                """
+                    WITH selected_teams AS (
+                        SELECT t.id AS id
+                        FROM teams_users tu
+                        JOIN teams t
+                            ON t.id = tu.team_id
+                        WHERE tu.user_id = %s
+                    )
+                    SELECT
+                        o.id AS id,
+                        o.name AS name,
+                        o.description AS description,
+                        o.customer_id AS customer_id,
+                        o.execution_type AS execution_type,
+                        ARRAY_AGG(DISTINCT(i.image_link))
+                            FILTER
+                                (WHERE i.image_link IS NOT NULL)
+                            AS images_links,
+                        ARRAY_AGG(t.name) AS tags
                         FROM orders o
                         LEFT JOIN orders_images oi
                             ON oi.order_id = o.id
@@ -512,27 +816,50 @@ class Order(BaseModel):
                             ON ot.order_id = o.id
                         LEFT JOIN tags t
                             ON ot.tag_id = t.id
-                        WHERE o.id = %s
+                        WHERE performer_id = %s 
+                            OR performer_team_id = ANY(SELECT id FROM selected_teams)
                         GROUP BY 
-                            o.id, 
-                            o.name, 
-                            o.description, 
+                            o.id,
+                            o.name,
+                            o.description,
                             o.customer_id,
-                            o.performer_id, 
-                            o.performer_team_id;
-                    """,
-                    (order_id, )
-                )
-                order = cursor.fetchone()
+                            o.execution_type;
+                """,
+                (performer_id, performer_id, ),
+                is_all=True
+            )
 
-                if order["execution_type"] == "single" and order.get("performer_id"):
-                    GlobalException.CustomHTTPException.raise_exception(
-                        status_code=403,
-                        detail=(
-                            "You are not allowed to assign yourself to selected order. " \
-                            "The order is already accepted to work by another user"
-                        )
+    @staticmethod
+    def get_customers_by_performer(performer_id: int) -> list[dict[str, Any]] | dict[str, Any] | None:
+        with PostgresDatabase() as db:
+            return db.fetch(
+                """
+                    WITH selected_teams AS (
+                        SELECT t.id AS id
+                        FROM teams_users tu
+                        JOIN teams t
+                            ON t.id = tu.team_id
+                        WHERE tu.user_id = %s
+                    ),
+                    selected_customers AS (
+                        SELECT 
+                            ARRAY_AGG(id) AS order_ids,
+                            customer_id
+                        FROM orders
+                        WHERE performer_id = %s
+                            OR performer_team_id = ANY(SELECT id from selected_teams)
+                        GROUP BY customer_id
                     )
-                if order["execution_type"] == "team" and order.get("performer_team_id"):
-                    cursor.execute("")
- 
+                    SELECT 
+                        sc.order_ids AS order_ids,
+                        username,
+                        first_name,
+                        last_name,
+                        photo_link
+                    FROM selected_customers sc
+                    JOIN users u
+                        ON sc.customer_id = u.id
+                """,
+                (performer_id, performer_id, ),
+                is_all=True
+            )

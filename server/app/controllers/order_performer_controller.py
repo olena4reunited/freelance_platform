@@ -13,35 +13,12 @@ class OrderPerformerController:
 
     @staticmethod
     def assign_to_the_order(order_id: int, performer_id: int) -> dict[str, Any]:
-        ...
+        return Order.assign_single_performer_to_order(order_id, performer_id)
 
     @staticmethod
     def get_assigned_orders(performer_id: int) -> list[dict[str, Any]] | dict[str, Any] | None:
-        with PostgresDatabase() as db:
-            return db.fetch(
-                """
-                    SELECT id, name, description, customer_id, performer_id
-                    FROM orders
-                    WHERE is_blocked IS NOT TRUE AND performer_id = %s
-                """,
-                (performer_id,),
-                is_all=True
-            )
+        return Order.get_assigned_orders_by_performer(performer_id)
 
     @staticmethod
     def get_all_performer_customers(performer_id: int) -> list[dict[str, Any]] | dict[str, Any] | None:
-        with PostgresDatabase() as db:
-            return db.fetch(
-                """
-                    WITH selected_customers_ids AS (
-                        SELECT id, customer_id
-                        FROM orders
-                        WHERE performer_id = %s
-                    )
-                    SELECT sc.id AS order_id, u.id AS id, username, first_name, last_name, photo_link
-                    FROM selected_customers_ids sc
-                    Join users u on sc.customer_id = u.id
-                """,
-                (performer_id,),
-                is_all=True
-            )
+        return Order.get_customers_by_performer(performer_id)
