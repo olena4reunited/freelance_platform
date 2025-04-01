@@ -24,6 +24,14 @@ class OrderCustomerController:
             Order.get_performers_by_customer(customer_id) 
             + Order.get_performer_teams_by_customer(customer_id)
         )
+    
+    @staticmethod
+    def increase_price(order_id: int, percent: int) -> dict[str, Any]:
+        return Order.increase_order_price(order_id, percent)
+
+    @staticmethod
+    def decrease_price(order_id: int, percent: int) -> dict[str, Any]:
+        return Order.decrease_order_price(order_id, percent)
 
     @staticmethod
     def get_order_details(order_id: int) -> dict[str, Any] | None:

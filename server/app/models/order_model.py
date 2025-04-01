@@ -174,43 +174,95 @@ class Order(BaseModel):
             return order_teams
 
     @staticmethod
+    def _get_order_details_query() -> sql.Composed:
+        return sql.SQL(
+            """
+                SELECT 
+                    o.id AS id,
+                    o.name AS name,
+                    o.description AS description,
+                    o.customer_id AS customer_id,
+                    o.execution_type AS execution_type,
+                    o.price AS price,
+                    o.performer_id AS performer_id,
+                    o.performer_team_id AS performer_team_id,
+                    ARRAY_AGG(DISTINCT i.image_link) 
+                        FILTER 
+                            (WHERE i.image_link IS NOT NULL) 
+                        AS images_links,
+                    ARRAY_AGG(t.name) AS tags
+                FROM orders o
+                LEFT JOIN orders_images oi
+                    ON oi.order_id = o.id
+                LEFT JOIN images i
+                    ON oi.image_id = i.id
+                LEFT JOIN orders_tags ot
+                    ON ot.order_id = o.id
+                LEFT JOIN tags t
+                    ON ot.tag_id = t.id
+                WHERE o.id = %s
+                GROUP BY 
+                    o.id, 
+                    o.name, 
+                    o.description, 
+                    o.customer_id,
+                    o.performer_id, 
+                    o.performer_team_id;
+            """
+        )
+
+
+    @staticmethod
     def get_order_details(order_id: int) -> dict[str, Any] | None:
+        query = Order._get_order_details_query()
+
         with PostgresDatabase() as db:
             return db.fetch(
-                """
-                    SELECT 
-                        o.id AS id,
-                        o.name AS name,
-                        o.description AS description,
-                        o.customer_id AS customer_id,
-                        o.execution_type AS execution_type,
-                        o.performer_id AS performer_id,
-                        o.performer_team_id AS performer_team_id,
-                        ARRAY_AGG(DISTINCT i.image_link) 
-                            FILTER 
-                                (WHERE i.image_link IS NOT NULL) 
-                            AS images_links,
-                        ARRAY_AGG(t.name) AS tags
-                    FROM orders o
-                    LEFT JOIN orders_images oi
-                        ON oi.order_id = o.id
-                    LEFT JOIN images i
-                        ON oi.image_id = i.id
-                    LEFT JOIN orders_tags ot
-                        ON ot.order_id = o.id
-                    LEFT JOIN tags t
-                        ON ot.tag_id = t.id
-                    WHERE o.id = %s
-                    GROUP BY 
-                        o.id, 
-                        o.name, 
-                        o.description, 
-                        o.customer_id,
-                        o.performer_id, 
-                        o.performer_team_id;
-                """,
+                query,
                 (order_id, )
             )
+
+    @staticmethod
+    def increase_order_price(order_id: int, percent: int):
+        query = Order._get_order_details_query()
+
+        with PostgresDatabase(on_commit=True) as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                        UPDATE orders
+                        SET price = price * (1 + %s / 100.0)
+                        WHERE id = %s;
+                    """,
+                    (percent, order_id, )
+                )
+            
+                cursor.execute(
+                    query,
+                    (order_id, )
+                )
+                return cursor.fetchone()
+
+    @staticmethod
+    def decrease_order_price(order_id: int, percent: int):
+        query = Order._get_order_details_query()
+
+        with PostgresDatabase(on_commit=True) as db:
+            with db.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                        UPDATE orders
+                        SET price = price * (1 - %s / 100.0)
+                        WHERE id = %s;
+                    """,
+                    (percent, order_id, )
+                )
+
+                cursor.execute(
+                    query,
+                    (order_id, )
+                )
+                return cursor.fetchone()
 
     @staticmethod
     def create_order(
@@ -276,6 +328,7 @@ class Order(BaseModel):
                             o.description AS description,
                             o.customer_id AS customer_id,
                             o.execution_type AS execution_type,
+                            o.price as price,
                             o.performer_id AS performer_id,
                             o.performer_team_id AS performer_team_id,
                             ARRAY_AGG(DISTINCT i.image_link) 
@@ -391,6 +444,7 @@ class Order(BaseModel):
                             o.description AS description,
                             o.customer_id AS customer_id,
                             o.execution_type AS execution_type,
+                            o.price AS price,
                             o.performer_id AS performer_id,
                             o.performer_team_id AS performer_team_id,
                             ARRAY_AGG(DISTINCT i.image_link) 
@@ -443,6 +497,7 @@ class Order(BaseModel):
                             o.description AS description,
                             o.customer_id AS customer_id,
                             o.execution_type AS execution_type,
+                            o.price AS price,
                             ARRAY_AGG(DISTINCT i.image_link) 
                                 FILTER 
                                     (WHERE i.image_link IS NOT NULL) 

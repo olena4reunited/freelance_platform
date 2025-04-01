@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Union, Annotated
 
 from fastapi import APIRouter, Depends, Query
 
@@ -17,6 +17,7 @@ from server.app.schemas.users_schemas import (
     UserCustomerResponse
 )
 from server.app.schemas.admin_schemas import BlockRequest
+from server.app.validators.price_validators import validate_persentage
 from server.app.validators.order_validators import (
     OrderCustomerValidator,
     OrderPerformerValidator
@@ -24,6 +25,7 @@ from server.app.validators.order_validators import (
 from server.app.controllers.order_customer_controller import OrderCustomerController
 from server.app.controllers.order_performer_controller import OrderPerformerController
 from server.app.controllers.order_admin_controller import OrderAdminController
+from server.app.controllers.orders_logs_controller import OrdersLogsController
 from server.app.utils.exceptions import GlobalException
 from server.app.utils.dependencies.dependencies import (
     get_current_user,
@@ -69,6 +71,58 @@ def get_order_list(
     return OrderCustomerController.get_order_details(order_id)
 
 
+@router.get("/customer/me/list/{order_id}/increase_price", response_model=Union[OrderDetailResponseBase, OrderDetailResponseSingle, OrderDetailResponseTeam])
+@GlobalException.catcher
+@required_plans(["customer"])
+@required_permissions(["read_own_order_details", "update_own_order"])
+def increase_price(
+    order_id: int,
+    percentage: Annotated[int, Depends(validate_persentage)],
+    user: dict[str, Any] = Depends(get_current_user)
+):
+    OrderCustomerValidator(customer_id=user.get("id"), order_id=order_id) \
+    .validate_order()
+
+    order = OrderCustomerController.increase_price(
+        order_id=order_id,
+        percent=percentage
+    )
+
+    OrdersLogsController.log_order_async(
+        log_type="updated", 
+        order_data=order, 
+        percent=percentage
+    )
+
+    return order
+
+
+@router.get("/customer/me/list/{order_id}/decrease_price", response_model=Union[OrderDetailResponseBase, OrderDetailResponseSingle, OrderDetailResponseTeam])
+@GlobalException.catcher
+@required_plans(["customer"])
+@required_permissions(["read_own_order_details", "update_own_order"])
+def increase_price(
+    order_id: int,
+    percentage: Annotated[int, Depends(validate_persentage)],
+    user: dict[str, Any] = Depends(get_current_user)
+):
+    OrderCustomerValidator(customer_id=user.get("id"), order_id=order_id) \
+    .validate_order()
+
+    order = OrderCustomerController.decrease_price(
+        order_id=order_id,
+        percent=percentage
+    )
+
+    OrdersLogsController.log_order_async(
+        log_type="updated", 
+        order_data=order, 
+        percent=percentage
+    )
+
+    return order
+
+
 @router.post("/customer/me", response_model=OrderDetailResponseBase)
 @GlobalException.catcher
 @required_plans(["customer"])
@@ -81,6 +135,8 @@ def create_order(
         order_data=order_data.model_dump(),
         customer_id=user.get("id")
     )
+
+    OrdersLogsController.log_order_async(log_type="created", order_data=order)
 
     mqtt.publish_new_order(
         order_data=order,
@@ -102,8 +158,11 @@ def update_order(
     OrderCustomerValidator(customer_id=user.get("id"), order_id=order_id) \
     .validate_order()
 
-    return OrderCustomerController.update_order(order_id, updated_order_data.model_dump())
+    order = OrderCustomerController.update_order(order_id, updated_order_data.model_dump())
 
+    OrdersLogsController.log_order_async(log_type="updated", order_data=order)
+
+    return order
 
 @router.delete("/customer/me/list/{order_id}", response_model=Union[list[OrderListResponse], OrderListResponse])
 @GlobalException.catcher

@@ -52,6 +52,7 @@ class OrderDetailResponseBase(BaseModel):
     description: str | None
     customer_id: int
     execution_type: str
+    price: Decimal
     images_links: list[str] | None
     tags: list[str] | list[int]
 
