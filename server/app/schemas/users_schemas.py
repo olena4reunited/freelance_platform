@@ -20,7 +20,7 @@ class UserCreateCustomer(UserCreate):
 
 
 class UserCreatePerformer(UserCreate):
-    specialities: list[str] | None = None
+    specialities: list[int] | None = None
 
 
 class UserUpdate(BaseModel):
@@ -33,6 +33,7 @@ class UserUpdate(BaseModel):
     password_repeat: str | None = None
     photo_link: str | None = None
     description: str | None = None
+    specialities: list[int] | None = None
 
 
 class UserResponse(BaseModel):
@@ -61,7 +62,7 @@ class UserResponseExtended(UserResponse):
 
 
 class UserResponseExtendedPerformer(UserResponseExtended):
-    specialities: list[str] | None
+    specialities: list[int] | list[str] | None
 
 
 class UserCreateToken(BaseModel):

@@ -222,15 +222,16 @@ class Order(BaseModel):
                 cursor.execute(
                     """
                         INSERT INTO orders 
-                            (name, description, customer_id, execution_type)
-                        VALUES (%s, %s, %s, %s)
+                            (name, description, customer_id, execution_type, price)
+                        VALUES (%s, %s, %s, %s, %s)
                         RETURNING id;
                     """,
                     (
                         order_data["name"], 
                         order_data["description"], 
                         customer_id, 
-                        order_data["execution_type"]
+                        order_data["execution_type"],
+                        order_data["price"]
                     ),
                 )
                 order = cursor.fetchone()
@@ -259,18 +260,12 @@ class Order(BaseModel):
                         order_images_data
                     )
 
-                cursor.execute(
+                cursor.executemany(
                     """
-                        WITH selected_tags AS (
-                            SELECT id 
-                            FROM tags
-                            WHERE name = ANY(%s)
-                        )
                         INSERT INTO orders_tags (order_id, tag_id)
-                        SELECT %s, id
-                        FROM selected_tags;
+                        VALUES (%s, %s);
                     """,
-                    (order_data["tags"], order["id"], )
+                    [(order["id"], tag) for tag in order_data["tags"]]
                 )
 
                 cursor.execute(
@@ -360,19 +355,14 @@ class Order(BaseModel):
                         (order_id, )
                     )
 
-                    cursor.execute(
+                    cursor.executemany(
                         """
-                            WITH selected_tags AS (
-                                SELECT id 
-                                FROM tags
-                                WHERE name = ANY(%s)
-                            )
                             INSERT INTO orders_tags (order_id, tag_id)
-                            SELECT %s, id
-                            FROM selected_tags;
+                            VALUES (%s, %s);
                         """,
-                        (order_data["tags"], order_id, )
+                        [(order_id, tag) for tag in order_data["tags"]]
                     )
+
 
                     order_data.pop("tags")
 

@@ -261,18 +261,12 @@ class User(BaseModel):
                 user_specialities = user_data.get("specialities", None)
 
                 if user_specialities:
-                    cursor.execute(
+                    cursor.executemany(
                         """
-                            WITH selected_specialities AS (
-                                SELECT id
-                                FROM specialities
-                                WHERE name = ANY(%s)
-                            )
                             INSERT INTO users_specialities (user_id, speciality_id)
-                            SELECT %s, ssp.id
-                            FROM selected_specialities ssp
+                            VALUES (%s, %s);
                         """,
-                        (user_specialities, user.get("id"))
+                        [(speciality, user.get("id")) for speciality in user_specialities]
                     )
                 
         user["specialities"] = user_specialities
@@ -349,19 +343,13 @@ class User(BaseModel):
                         """,
                         (user_id, )
                     )
-
-                    cursor.execute(
+                    
+                    cursor.executemany(
                         """
-                            WITH selected_specialities AS (
-                                SELECT id
-                                FROM specialities
-                                WHERE name = ANY(%s)
-                            )
                             INSERT INTO users_specialities (user_id, speciality_id)
-                            SELECT %s, ssp.id
-                            FROM selected_specialities ssp
+                            VALUES (%s, %s);
                         """,
-                        (user_specialities, user_id)
+                        [(speciality, user_id) for speciality in user_specialities]
                     )
                 
                 cursor.execute(

@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
@@ -21,14 +22,16 @@ class OrderCreate(BaseModel):
     description: str
     execution_type: str = Field(pattern=r"^(single|team)$")
     images_links: list[str] | None = None
-    tags: list[str]
+    tags: list[int]
+    price: float = Field(decimal_places=2)
 
 
 class OrderUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     images_links: list[str] | None = None
-    tags: list[str] | None = None
+    tags: list[int] | None = None
+    price: float = Field(decimal_places=2)
 
 
 class OrderListResponse(BaseModel):
@@ -40,7 +43,7 @@ class OrderListResponse(BaseModel):
     performer_id: int | None
     performer_team_id: int | None
     image_link: str | None
-    tags: list[str]
+    tags: list[str] | list[int]
 
 
 class OrderDetailResponseBase(BaseModel):
@@ -50,7 +53,7 @@ class OrderDetailResponseBase(BaseModel):
     customer_id: int
     execution_type: str
     images_links: list[str] | None
-    tags: list[str]
+    tags: list[str] | list[int]
 
 
 class OrderDetailResponseSingle(OrderDetailResponseBase):
