@@ -164,6 +164,7 @@ def update_order(
 
     return order
 
+
 @router.delete("/customer/me/list/{order_id}", response_model=Union[list[OrderListResponse], OrderListResponse])
 @GlobalException.catcher
 @required_plans(["customer"])
