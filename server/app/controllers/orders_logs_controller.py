@@ -18,8 +18,8 @@ class OrdersLogsController:
             with db.connection.cursor() as cursor:
                 cursor.execute(
                     """
-                        INSERT INTO orders_logs (customer_id, order_id, change_type, new_price, order_name, order_tags)
-                        VALUES (%s, %s, 'created', %s, %s, %s);
+                        INSERT INTO orders_logs (customer_id, order_id, change_type, old_price, new_price, price_change_percent, order_name, order_tags)
+                        VALUES (%s, %s, 'created', 0, %s, 100, %s, %s);
                     """,
                     (
                         order_data["customer_id"],
