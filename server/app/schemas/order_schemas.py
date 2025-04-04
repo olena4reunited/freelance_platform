@@ -23,7 +23,7 @@ class OrderCreate(BaseModel):
     execution_type: str = Field(pattern=r"^(single|team)$")
     images_links: list[str] | None = None
     tags: list[int]
-    price: float = Field(decimal_places=2)
+    price: float
 
 
 class OrderUpdate(BaseModel):
@@ -31,7 +31,7 @@ class OrderUpdate(BaseModel):
     description: str | None = None
     images_links: list[str] | None = None
     tags: list[int] | None = None
-    price: float = Field(decimal_places=2)
+    price: float
 
 
 class OrderListResponse(BaseModel):
