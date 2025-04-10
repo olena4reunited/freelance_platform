@@ -1,13 +1,44 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 package payments;
 
 service PaymentsService {
-  rpc CreatePayment(CreatePaymentRequest) returns (PaymentResponse) {}
+  // Create payment method for user from auth token
+  rpc CreatePayment(CreatePaymentRequest) returns (PaymentResponse);
+  // Get list of all payment methods for user  from auth token
+  rpc GetAllUserPayments(google.protobuf.Empty) returns (PaymentListResponsePerUser);
+  // Get single payment methood for user from auth token with payment_id 
+  rpc GetPayment(PaymentRequest) returns (PaymentResponse);
+  // Delete payment method for user from auth token with payment_id
+  rpc DeletePayment(PaymentRequest) returns (google.protobuf.Empty);
+
+  // Get list of all payment methods for all users
+  rpc AdminGetAllUsersPayments(google.protobuf.Empty) returns (PaymentListResponse);
+  // Get list of all payment methods for a selected user
+  rpc AdminGetAllUserPayments(UserRequest) returns (PaymentListResponsePerUser);
+  // Get single payment method for a selected user 
+  rpc AdminGetUserPayment(UserPaymentRequest) returns (PaymentDetailResponse);
+  // Delete payment method for a selected user
+  rpc AdminDeleteUserPayment(UserPaymentRequest) returns (google.protobuf.Empty);
 }
 
 message CreatePaymentRequest {
   string payment = 1;
+}
+
+message PaymentRequest {
+  int64 payment_id = 1;
+}
+
+message UserRequest {
+  int64 user_id = 1;
+}
+
+message UserPaymentRequest {
+  int64 user_id = 1;
+  int64 payment_id = 2;
 }
 
 message PaymentResponse {
@@ -19,4 +50,12 @@ message PaymentDetailResponse {
   int64 id = 1;
   string payment = 2;
   int64 user_id = 3;
+}
+
+message PaymentListResponse {
+  repeated PaymentDetailResponse payments = 1;
+}
+
+message PaymentListResponsePerUser {
+  repeated PaymentResponse payments = 1;
 }
