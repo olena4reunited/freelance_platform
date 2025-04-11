@@ -11,6 +11,7 @@ from server.app.grpc.generated.payments_pb2 import (
     PaymentListResponse,
     PaymentListResponsePerUser
 )
+from server.app.database.database import PostgresDatabase
 
 
 class PaymentsService(PaymentsServiceServicer):
@@ -18,6 +19,7 @@ class PaymentsService(PaymentsServiceServicer):
         return super().CreatePayment(request, context)
     
     def GetAllUserPayments(self, request: empty_pb2, context):
+        
         return super().GetAllUserPayments(request, context)
 
     def GetPayment(self, request: PaymentRequest, context):

@@ -2,6 +2,7 @@ import grpc
 from concurrent import futures
 
 from generated import payments_pb2_grpc
+from interceptors.auth_interceptor import AuthInterceptor
 from services.payments_service import PaymentsService
 from server.app.utils.logger import logger
 
@@ -9,7 +10,7 @@ from server.app.utils.logger import logger
 async def serve():
     server = grpc.aio.server(
         futures.ThreadPoolExecutor(max_workers=10),
-        interceptors=None
+        interceptors=[AuthInterceptor()]
     )
 
     payments_pb2_grpc.add_PaymentsServiceServicer_to_server(
