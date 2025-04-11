@@ -12,7 +12,7 @@ category_names = {
     "UX/UI": ["Experience_Wizards", "Interface_Gurus", "UX_Architects"],
     "writing": ["Wordsmiths", "Content_Ninjas", "Text_Hackers"],
     "marketing": ["Brand_Boosters", "Hype_Lords", "Engagement_Warriors"],
-    "random shit": ["Wildcard_Crew", "Chaos_Team", "No_Rules_Gang"]
+    "random bullshit": ["Wildcard_Crew", "Chaos_Team", "No_Rules_Gang"]
 }
 
 
@@ -27,7 +27,7 @@ def generate_team_name(tags: list[str]):
     selected_categories = [category_names[tag] for tag in tags if tag in category_names]
     
     if not selected_categories:
-        selected_categories = [category_names["random shit"]]
+        selected_categories = [category_names["random bullshit"]]
     
     category_name = random.choice(random.choice(selected_categories))
     numeric_id = generate_numeric_identifier()
