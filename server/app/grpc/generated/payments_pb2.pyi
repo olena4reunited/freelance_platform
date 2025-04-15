@@ -41,14 +41,14 @@ class PaymentResponse(_message.Message):
     def __init__(self, id: _Optional[int] = ..., payment: _Optional[str] = ...) -> None: ...
 
 class PaymentDetailResponse(_message.Message):
-    __slots__ = ("id", "payment", "user_id")
+    __slots__ = ("id", "user_id", "payment")
     ID_FIELD_NUMBER: _ClassVar[int]
-    PAYMENT_FIELD_NUMBER: _ClassVar[int]
     USER_ID_FIELD_NUMBER: _ClassVar[int]
+    PAYMENT_FIELD_NUMBER: _ClassVar[int]
     id: int
-    payment: str
     user_id: int
-    def __init__(self, id: _Optional[int] = ..., payment: _Optional[str] = ..., user_id: _Optional[int] = ...) -> None: ...
+    payment: str
+    def __init__(self, id: _Optional[int] = ..., user_id: _Optional[int] = ..., payment: _Optional[str] = ...) -> None: ...
 
 class PaymentListResponse(_message.Message):
     __slots__ = ("payments",)

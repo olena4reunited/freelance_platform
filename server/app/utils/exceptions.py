@@ -2,6 +2,8 @@ from typing import Callable, Any, Awaitable
 from functools import wraps
 import traceback
 
+import grpc
+
 from fastapi import HTTPException
 from fastapi.exceptions import ResponseValidationError, ValidationException
 from psycopg2.errors import DatabaseError, OperationalError, IntegrityError
@@ -9,6 +11,22 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from server.app.utils.logger import logger
+
+
+def get_http_error_code(status_code: grpc.StatusCode) -> int:
+    mapping = {
+        grpc.StatusCode.OK: 200,
+        grpc.StatusCode.INVALID_ARGUMENT: 400,
+        grpc.StatusCode.UNAUTHENTICATED: 401,
+        grpc.StatusCode.PERMISSION_DENIED: 403,
+        grpc.StatusCode.NOT_FOUND: 404,
+        grpc.StatusCode.ALREADY_EXISTS: 409,
+        grpc.StatusCode.INTERNAL: 500,
+        grpc.StatusCode.UNIMPLEMENTED: 501,
+        grpc.StatusCode.UNKNOWN: 502,
+        grpc.StatusCode.UNAVAILABLE: 503,
+    }
+    return mapping.get(status_code, 502)
 
 
 class GlobalException(Exception):
@@ -20,6 +38,17 @@ class GlobalException(Exception):
                 if isinstance(func, Awaitable):
                     return await func(*args, **kwargs)
                 return func(*args, **kwargs)
+            except (grpc.aio.AioRpcError, grpc.aio.AbortError) as e:
+                logger.error(
+                    "gRPC error was occured: \n%s" \
+                    "\x1b[31mERROR TRACEBACK:\x1b[0m\n%s",
+                    " "*10,
+                    traceback.format_exc()
+                )
+                raise GlobalException.CustomHTTPException(
+                    status_code=get_http_error_code(e.code()),
+                    detail=e.details()
+                )
             except (DatabaseError, OperationalError, IntegrityError) as e:
                 logger.error(
                     "Database error was occured: \n%s\x1b[31m" \

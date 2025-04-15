@@ -48,8 +48,8 @@ message PaymentResponse {
 
 message PaymentDetailResponse {
   int64 id = 1;
-  string payment = 2;
-  int64 user_id = 3;
+  int64 user_id = 2;
+  string payment = 3;
 }
 
 message PaymentListResponse {
