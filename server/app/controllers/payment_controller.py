@@ -11,15 +11,15 @@ class PaymentController:
         encrypted_payment = encrypt_data(payment_data)
 
         payment = Payment.create_payment(user_id=user_id, payment=encrypted_payment)
-        payment["payment"] = get_masked_payment(payment["payment"])
+        payment = get_masked_payment(payment)
 
         return payment
 
     @staticmethod
     def get_payment(payment_id: int) -> dict[str, str]:
         payment = Payment.get_record_by_id(payment_id)
-        payment["payment"] = get_masked_payment(payment["payment"])
         payment.pop("user_id")
+        payment = get_masked_payment(payment)
 
         return payment
 
