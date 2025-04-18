@@ -1,3 +1,4 @@
+import asyncio
 import json
 from functools import wraps
 from typing import Any, Annotated, Callable
@@ -15,22 +16,31 @@ from server.app.utils.exceptions import GlobalException
 security = HTTPBearer()
 
 
-def handle_jwt_errors(func: Callable) -> Callable:
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except jwt.ExpiredSignatureError as e:
-            GlobalException.CustomHTTPException.raise_exception(
-                status_code=401,
-                detail="Signature expired. Please login again."
-            )
-        except jwt.InvalidTokenError as e:
-            GlobalException.CustomHTTPException.raise_exception(
-                status_code=403,
-                detail="Invalid token. Could not process request."
-            )
-    return wrapper
+async def get_token(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]) -> str | None:
+    if credentials is None:
+        GlobalException.CustomHTTPException.raise_exception(
+            status_code=401,
+            detail="Authentication credentials were not provided"
+        )
+    try:
+        token = credentials.credentials
+        verify_token(token)
+        return token
+    except jwt.PyJWTError as e:
+        GlobalException.CustomHTTPException.raise_exception(
+            status_code=401,
+            detail="Could not validate credentials."
+        )
+    except jwt.ExpiredSignatureError as e:
+        GlobalException.CustomHTTPException.raise_exception(
+            status_code=401,
+            detail="Signature expired. Please login again."
+        )
+    except jwt.InvalidTokenError as e:
+        GlobalException.CustomHTTPException.raise_exception(
+            status_code=403,
+            detail="Invalid token. Could not process request."
+        )
 
 
 async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]) -> dict[str, Any] | None:
@@ -67,13 +77,22 @@ async def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials, 
             status_code=401,
             detail="Could not validate credentials."
         )
+    except jwt.ExpiredSignatureError as e:
+        GlobalException.CustomHTTPException.raise_exception(
+            status_code=401,
+            detail="Signature expired. Please login again."
+        )
+    except jwt.InvalidTokenError as e:
+        GlobalException.CustomHTTPException.raise_exception(
+            status_code=403,
+            detail="Invalid token. Could not process request."
+        )
 
 
-@handle_jwt_errors
 def required_plans(allowed_plans: list[str]):
     def decorator(func: Callable):
         @wraps(func)
-        def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
+        async def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
             plan_name = user["plan_name"]
 
             if not plan_name:
@@ -87,8 +106,10 @@ def required_plans(allowed_plans: list[str]):
                     status_code=403,
                     detail="Plan '{}' is not allowed to get access to resource".format(plan_name)
                 )
-
-            return func(*args, user=user, **kwargs)
+            if asyncio.iscoroutinefunction(func):
+                return await func(*args, user=user, **kwargs)
+            else:
+                return func(*args, user=user, **kwargs)
         return wrapper
     return decorator
 
@@ -96,7 +117,7 @@ def required_plans(allowed_plans: list[str]):
 def required_permissions(permissions: list[str]):
     def decorator(func: Callable):
         @wraps(func)
-        def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
+        async def wrapper(*args, user: dict[str, Any] = Depends(get_current_user), **kwargs) -> dict[str, Any]:
             plan_name = user["plan_name"]
 
             if not plan_name:
@@ -113,7 +134,9 @@ def required_permissions(permissions: list[str]):
                     status_code=403,
                     detail="User does not have permission to access resource"
                 )
-
-            return func(*args, user=user, **kwargs)
+            if asyncio.iscoroutinefunction(func):
+                return await func(*args, user=user, **kwargs)
+            else:
+                return func(*args, user=user, **kwargs)
         return wrapper
     return decorator

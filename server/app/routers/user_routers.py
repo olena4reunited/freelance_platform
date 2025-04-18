@@ -24,8 +24,7 @@ from server.app.validators.user_validators import (
 from server.app.utils.dependencies.dependencies import (
     get_current_user,
     required_plans,
-    required_permissions,
-    handle_jwt_errors
+    required_permissions
 )
 from server.app.utils.exceptions import GlobalException
 from server.app.utils.auth import oauth
@@ -104,7 +103,6 @@ def create_user_token(user_data: UserCreateToken):
 
 
 @router.post("/token/refresh", response_model=Token)
-@handle_jwt_errors
 @GlobalException.catcher
 def refresh_user_token(refresh_tkn: dict[str, str]):
     return UserController.refresh_bearer_token(refresh_tkn["refresh_token"])

@@ -10,6 +10,7 @@ import socketio
 
 from server.app.services.chat_service import sio
 from server.app.database.database import PostgresDatabase
+from server.app.routers.payments_grpc_routers import router as payment_grpc_router
 from server.app.routers.user_routers import router as user_router
 from server.app.routers.admin_routers import router as admin_router
 from server.app.routers.payment_routers import router as payment_router
@@ -90,6 +91,7 @@ app.add_exception_handler(ResponseValidationError, response_validation_exception
 
 app.mount("/socket.io", socketio.ASGIApp(sio))
 
+app.include_router(payment_grpc_router)
 app.include_router(user_router)
 app.include_router(admin_router)
 app.include_router(payment_router)

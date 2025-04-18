@@ -1,3 +1,4 @@
+import asyncio
 from typing import Callable, Any, Awaitable
 from functools import wraps
 import traceback
@@ -35,7 +36,7 @@ class GlobalException(Exception):
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Exception:
             try:
-                if isinstance(func, Awaitable):
+                if asyncio.iscoroutinefunction(func):
                     return await func(*args, **kwargs)
                 return func(*args, **kwargs)
             except (grpc.aio.AioRpcError, grpc.aio.AbortError) as e:

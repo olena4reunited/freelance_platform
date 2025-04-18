@@ -23,6 +23,4 @@ async def serve():
 
 
 if __name__ == "__main__":
-    from server.app.services.cache_permissions_service import load_permissions
-    load_permissions()
     asyncio.run(serve())
